@@ -1,0 +1,17 @@
+{
+	"name": "all-for-one",
+	"type": "self_hosted",
+	"domain": "REPLACE_WITH_ACCESS_APP_DOMAIN",
+	"session_duration": "24h",
+	"allowed_idps": ["REPLACE_WITH_ACCESS_IDP_ID"],
+	"auto_redirect_to_identity": true,
+	"enable_binding_cookie": true,
+	"http_only_cookie_attribute": true,
+	"same_site_cookie_attribute": "lax",
+	"cors_headers": {
+		"allowed_methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+		"allowed_origins": ["REPLACE_WITH_ACCESS_APP_ORIGIN"],
+		"allow_credentials": true,
+		"max_age": 86400
+	}
+}

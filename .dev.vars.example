@@ -1,0 +1,5 @@
+MY_DOCS_API_BASE_URL=https://my-docs.kr/api
+MY_DOCS_SERVICE_TOKEN_READ=replace_with_read_service_token_for_local_only
+LANDING_LAW_API_BASE_URL=https://lawitgo.com/api
+LANDING_LAW_SERVICE_TOKEN_READ=replace_after_lawitgo_service_token_is_available
+AFO_DEVICE_INGEST_KEY=replace_with_local_device_ingest_key

@@ -1,0 +1,23 @@
+{
+	"name": "@all-for-one/connectors-my-docs",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": "./index.ts"
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.json --noEmit",
+		"check": "tsc -p tsconfig.json --noEmit",
+		"lint": "eslint .",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@all-for-one/connectors-base": "workspace:*",
+		"@all-for-one/shared": "workspace:*",
+		"react": "19.2.1"
+	},
+	"devDependencies": {
+		"@types/react": "19.2.7",
+		"vitest": "4.0.13"
+	}
+}

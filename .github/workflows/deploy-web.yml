@@ -1,0 +1,48 @@
+name: Deploy Web
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Cloudflare Pages environment
+        required: true
+        default: preview
+        type: choice
+        options:
+          - preview
+          - prod
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'prod' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web
+        run: pnpm --filter @all-for-one/web build
+
+      - name: Deploy Pages
+        run: pnpm --dir apps/api exec wrangler pages deploy ../../apps/web/dist --project-name="${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME }}" --branch="${{ github.event_name == 'workflow_dispatch' && inputs.environment == 'prod' && 'main' || 'preview' }}"
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
