@@ -178,3 +178,104 @@ export type NewWorkItem = {
 	metadata?: Record<string, unknown>;
 	occurredAt?: ISODateTime;
 };
+
+export type DailyLog = {
+	id: string;
+	logDate: string;
+	mood?: number;
+	condition?: number;
+	sleepHours?: number;
+	focus?: number;
+	summary?: string;
+	wins?: string;
+	blockers?: string;
+	tomorrow?: string;
+	tags?: string[];
+	createdAt: ISODateTime;
+	updatedAt: ISODateTime;
+};
+
+export type NewDailyLog = {
+	logDate: string;
+	mood?: number;
+	condition?: number;
+	sleepHours?: number;
+	focus?: number;
+	summary?: string;
+	wins?: string;
+	blockers?: string;
+	tomorrow?: string;
+	tags?: string[];
+};
+
+export type HealthEntry = {
+	id: string;
+	entryDate: string;
+	sleepHours?: number;
+	weightKg?: number;
+	exerciseMinutes?: number;
+	condition?: number;
+	stress?: number;
+	medication?: string;
+	mealNote?: string;
+	symptoms?: string;
+	createdAt: ISODateTime;
+	updatedAt: ISODateTime;
+};
+
+export type NewHealthEntry = {
+	entryDate: string;
+	sleepHours?: number;
+	weightKg?: number;
+	exerciseMinutes?: number;
+	condition?: number;
+	stress?: number;
+	medication?: string;
+	mealNote?: string;
+	symptoms?: string;
+};
+
+export type AiReportStatus =
+	| "received"
+	| "needs_review"
+	| "applied"
+	| "on_hold"
+	| "discarded";
+
+export type AiReport = {
+	id: string;
+	provider: string;
+	taskTitle: string;
+	request?: string;
+	result: string;
+	changedFiles?: string[];
+	commands?: string[];
+	todos?: string[];
+	status: AiReportStatus;
+	metadata?: Record<string, unknown>;
+	occurredAt: ISODateTime;
+	createdAt: ISODateTime;
+	updatedAt: ISODateTime;
+};
+
+export type NewAiReport = {
+	provider: string;
+	taskTitle: string;
+	request?: string;
+	result: string;
+	changedFiles?: string[];
+	commands?: string[];
+	todos?: string[];
+	status?: AiReportStatus;
+	metadata?: Record<string, unknown>;
+	occurredAt?: ISODateTime;
+};
+
+export type TodaySnapshot = {
+	date: string;
+	dailyLog?: DailyLog;
+	healthEntry?: HealthEntry;
+	openWorkItems: WorkItem[];
+	aiReports: AiReport[];
+	todayNews: WorkItem[];
+};

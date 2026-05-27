@@ -1,6 +1,9 @@
 import type {
 	ManagedSite,
 	ManagedSiteDetail,
+	AiReport,
+	DailyLog,
+	HealthEntry,
 	Metric,
 	ReportItem,
 	ScheduleItem,
@@ -28,6 +31,15 @@ export type DashboardSnapshot = {
 export type WorkIntakeSnapshot = {
 	devices: WorkDevice[];
 	items: WorkItem[];
+	todayNews: WorkItem[];
+};
+
+export type PersonalTodaySnapshot = {
+	date: string;
+	dailyLog?: DailyLog;
+	healthEntry?: HealthEntry;
+	openWorkItems: WorkItem[];
+	aiReports: AiReport[];
 	todayNews: WorkItem[];
 };
 
@@ -86,6 +98,13 @@ const workIntake: WorkIntakeSnapshot = {
 			createdAt: now,
 		},
 	],
+	todayNews: [],
+};
+
+const personalToday: PersonalTodaySnapshot = {
+	date: now.slice(0, 10),
+	openWorkItems: workIntake.items,
+	aiReports: [],
 	todayNews: [],
 };
 
@@ -256,6 +275,48 @@ export const rpcClient = {
 			};
 		} catch {
 			return workIntake;
+		}
+	},
+	async getPersonalToday(): Promise<PersonalTodaySnapshot> {
+		await delay();
+		try {
+			const response = await getJson<{ snapshot: PersonalTodaySnapshot }>(
+				"/personal/today",
+			);
+			return response.snapshot;
+		} catch {
+			return personalToday;
+		}
+	},
+	async getDailyLogs(): Promise<DailyLog[]> {
+		await delay();
+		try {
+			const response = await getJson<{ logs: DailyLog[] }>("/personal/life/logs");
+			return response.logs;
+		} catch {
+			return [];
+		}
+	},
+	async getHealthEntries(): Promise<HealthEntry[]> {
+		await delay();
+		try {
+			const response = await getJson<{ entries: HealthEntry[] }>(
+				"/personal/health/entries",
+			);
+			return response.entries;
+		} catch {
+			return [];
+		}
+	},
+	async getAiReports(): Promise<AiReport[]> {
+		await delay();
+		try {
+			const response = await getJson<{ reports: AiReport[] }>(
+				"/personal/ai-reports",
+			);
+			return response.reports;
+		} catch {
+			return [];
 		}
 	},
 	async getHealth() {

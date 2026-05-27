@@ -241,3 +241,84 @@ export const newWorkItemSchema = workItemSchema
 		platform: z.string().optional(),
 		occurredAt: isoDateTimeSchema.optional(),
 	});
+
+const scoreSchema = z.number().int().min(1).max(10);
+const dateOnlySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+export const dailyLogSchema = z.object({
+	id: z.string().min(1),
+	logDate: dateOnlySchema,
+	mood: scoreSchema.optional(),
+	condition: scoreSchema.optional(),
+	sleepHours: z.number().min(0).max(24).optional(),
+	focus: scoreSchema.optional(),
+	summary: z.string().optional(),
+	wins: z.string().optional(),
+	blockers: z.string().optional(),
+	tomorrow: z.string().optional(),
+	tags: z.array(z.string().min(1)).optional(),
+	createdAt: isoDateTimeSchema,
+	updatedAt: isoDateTimeSchema,
+});
+
+export const newDailyLogSchema = dailyLogSchema.omit({
+	id: true,
+	createdAt: true,
+	updatedAt: true,
+});
+
+export const healthEntrySchema = z.object({
+	id: z.string().min(1),
+	entryDate: dateOnlySchema,
+	sleepHours: z.number().min(0).max(24).optional(),
+	weightKg: z.number().min(0).max(500).optional(),
+	exerciseMinutes: z.number().int().min(0).max(1440).optional(),
+	condition: scoreSchema.optional(),
+	stress: scoreSchema.optional(),
+	medication: z.string().optional(),
+	mealNote: z.string().optional(),
+	symptoms: z.string().optional(),
+	createdAt: isoDateTimeSchema,
+	updatedAt: isoDateTimeSchema,
+});
+
+export const newHealthEntrySchema = healthEntrySchema.omit({
+	id: true,
+	createdAt: true,
+	updatedAt: true,
+});
+
+export const aiReportStatusSchema = z.enum([
+	"received",
+	"needs_review",
+	"applied",
+	"on_hold",
+	"discarded",
+]);
+
+export const aiReportSchema = z.object({
+	id: z.string().min(1),
+	provider: z.string().min(1),
+	taskTitle: z.string().min(1),
+	request: z.string().optional(),
+	result: z.string().min(1),
+	changedFiles: z.array(z.string()).optional(),
+	commands: z.array(z.string()).optional(),
+	todos: z.array(z.string()).optional(),
+	status: aiReportStatusSchema,
+	metadata: z.record(z.string(), z.unknown()).optional(),
+	occurredAt: isoDateTimeSchema,
+	createdAt: isoDateTimeSchema,
+	updatedAt: isoDateTimeSchema,
+});
+
+export const newAiReportSchema = aiReportSchema
+	.omit({
+		id: true,
+		createdAt: true,
+		updatedAt: true,
+	})
+	.extend({
+		status: aiReportStatusSchema.optional(),
+		occurredAt: isoDateTimeSchema.optional(),
+	});

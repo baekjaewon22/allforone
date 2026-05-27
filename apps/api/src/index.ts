@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { authRoutes } from "./routes/auth";
+import { personalRoutes } from "./routes/personal";
 import { reportRoutes } from "./routes/report";
 import { siteRoutes } from "./routes/sites";
 import { scheduleRoutes } from "./routes/schedule";
@@ -31,7 +32,7 @@ export type AppEnv = {
 
 export const app = new Hono<AppEnv>()
 	.use(
-		"/work/*",
+		"*",
 		cors({
 			origin: [
 				"http://127.0.0.1:5173",
@@ -39,7 +40,7 @@ export const app = new Hono<AppEnv>()
 				"https://all-for-one-db9.pages.dev",
 			],
 			allowHeaders: ["Content-Type", "X-AFO-Device-Key"],
-			allowMethods: ["GET", "POST", "OPTIONS"],
+			allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 		}),
 	)
 	.get("/healthz", (c) =>
@@ -52,6 +53,7 @@ export const app = new Hono<AppEnv>()
 	.route("/sync", syncRoutes)
 	.route("/schedule", scheduleRoutes)
 	.route("/report", reportRoutes)
+	.route("/personal", personalRoutes)
 	.route("/sites", siteRoutes)
 	.route("/work", workRoutes)
 	.route("/ws", wsRoutes);
