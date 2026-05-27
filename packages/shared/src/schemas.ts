@@ -322,3 +322,13 @@ export const newAiReportSchema = aiReportSchema
 		status: aiReportStatusSchema.optional(),
 		occurredAt: isoDateTimeSchema.optional(),
 	});
+
+export const llmProviderIdSchema = z.enum(["gemini", "openrouter", "ollama"]);
+
+export const newLlmChatSchema = z.object({
+	provider: llmProviderIdSchema.optional(),
+	model: z.string().min(1).max(120).optional(),
+	message: z.string().min(1).max(12000),
+	intent: z.enum(["chat", "summarize", "command_preview"]).optional(),
+	context: z.record(z.string(), z.unknown()).optional(),
+});

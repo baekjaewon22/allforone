@@ -2,6 +2,9 @@ import type {
 	ManagedSite,
 	ManagedSiteDetail,
 	SiteLiveOverview,
+	LlmProvider,
+	LlmRun,
+	NewLlmChat,
 	AiReport,
 	DailyLog,
 	HealthEntry,
@@ -43,6 +46,33 @@ export type PersonalTodaySnapshot = {
 	aiReports: AiReport[];
 	todayNews: WorkItem[];
 };
+
+const fallbackProviders: LlmProvider[] = [
+	{
+		id: "gemini",
+		name: "Gemini Free Tier",
+		model: "gemini-2.5-flash",
+		status: "needs_key",
+		freeTier: true,
+		description: "Google AI Studio 무료 API Key를 저장하면 바로 사용할 수 있습니다.",
+	},
+	{
+		id: "openrouter",
+		name: "OpenRouter Free Models",
+		model: "openrouter/free",
+		status: "needs_key",
+		freeTier: true,
+		description: "추후 보조 무료 모델로 연결할 수 있습니다.",
+	},
+	{
+		id: "ollama",
+		name: "Ollama Local",
+		model: "llama3.2",
+		status: "disabled",
+		freeTier: true,
+		description: "로컬 PC LLM 연결용입니다.",
+	},
+];
 
 const fallbackLiveOverview = (siteId: string): SiteLiveOverview => ({
 	siteId,
@@ -280,6 +310,19 @@ async function getJson<T>(path: string): Promise<T> {
 	return response.json() as Promise<T>;
 }
 
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+	const response = await fetch(`${apiBaseUrl}${path}`, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify(body),
+	});
+	if (!response.ok) {
+		throw new Error(`API request failed: ${path}`);
+	}
+
+	return response.json() as Promise<T>;
+}
+
 export const rpcClient = {
 	async getConnectors() {
 		await delay();
@@ -348,6 +391,36 @@ export const rpcClient = {
 		} catch {
 			return [];
 		}
+	},
+	async getLlmProviders(): Promise<LlmProvider[]> {
+		await delay();
+		try {
+			const response = await getJson<{ providers: LlmProvider[] }>("/llm/providers");
+			return response.providers;
+		} catch {
+			return fallbackProviders;
+		}
+	},
+	async getLlmHistory(): Promise<LlmRun[]> {
+		await delay();
+		try {
+			const response = await getJson<{ runs: LlmRun[] }>("/llm/history");
+			return response.runs;
+		} catch {
+			return [];
+		}
+	},
+	async runLlmChat(input: NewLlmChat): Promise<LlmRun> {
+		const response = await postJson<{ run: LlmRun }>("/llm/chat", input);
+		return response.run;
+	},
+	async runLlmSummary(input: NewLlmChat): Promise<LlmRun> {
+		const response = await postJson<{ run: LlmRun }>("/llm/summarize", input);
+		return response.run;
+	},
+	async runLlmCommandPreview(input: NewLlmChat): Promise<LlmRun> {
+		const response = await postJson<{ run: LlmRun }>("/llm/command/preview", input);
+		return response.run;
 	},
 	async getHealth() {
 		await delay();

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { authRoutes } from "./routes/auth";
+import { llmRoutes } from "./routes/llm";
 import { personalRoutes } from "./routes/personal";
 import { reportRoutes } from "./routes/report";
 import { siteRoutes } from "./routes/sites";
@@ -23,6 +24,12 @@ export type Bindings = {
 	LANDING_LAW_API_BASE_URL?: string;
 	LANDING_LAW_SERVICE_TOKEN_READ?: string;
 	AFO_DEVICE_INGEST_KEY?: string;
+	GEMINI_API_KEY?: string;
+	GEMINI_MODEL?: string;
+	OPENROUTER_API_KEY?: string;
+	OPENROUTER_MODEL?: string;
+	OLLAMA_BASE_URL?: string;
+	OLLAMA_MODEL?: string;
 	ENVIRONMENT?: "dev" | "preview" | "prod";
 };
 
@@ -54,6 +61,7 @@ export const app = new Hono<AppEnv>()
 	.route("/schedule", scheduleRoutes)
 	.route("/report", reportRoutes)
 	.route("/personal", personalRoutes)
+	.route("/llm", llmRoutes)
 	.route("/sites", siteRoutes)
 	.route("/work", workRoutes)
 	.route("/ws", wsRoutes);

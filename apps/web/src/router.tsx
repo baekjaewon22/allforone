@@ -1,5 +1,5 @@
 ﻿import { enabledConnectors } from "@all-for-one/connectors";
-import type { AiReport, DailyLog, HealthEntry, WorkItem } from "@all-for-one/shared";
+import type { AiReport, DailyLog, HealthEntry, LlmProvider, LlmProviderId, LlmRun, WorkItem } from "@all-for-one/shared";
 import { useQuery } from "@tanstack/react-query";
 import {
 	createRootRoute,
@@ -12,6 +12,7 @@ import {
 import {
 	Activity,
 	Bot,
+	BrainCircuit,
 	Cable,
 	Globe2,
 	HeartPulse,
@@ -22,7 +23,7 @@ import {
 	NotebookPen,
 	Settings,
 } from "lucide-react";
-import type { PropsWithChildren, ReactNode } from "react";
+import { useState, type PropsWithChildren, type ReactNode } from "react";
 import { clearAuthSession, getAuthSession, useAuthGuard } from "./auth";
 import { rpcClient } from "./lib/rpcClient";
 import { LoginPage } from "./screens/LoginPage";
@@ -34,6 +35,7 @@ const text = {
 	life: "일상 기록",
 	health: "건강",
 	aiReports: "AI 업무보고",
+	aiControl: "AI 관제실",
 	connectors: "연동 관리",
 	sites: "관리 사이트",
 	work: "작업함",
@@ -119,6 +121,12 @@ const aiReportsRoute = createRoute({
 	component: AiReportsPage,
 });
 
+const aiControlRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/ai-control",
+	component: AiControlPage,
+});
+
 const connectorsRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/connectors",
@@ -163,6 +171,7 @@ const routeTree = rootRoute.addChildren([
 		lifeRoute,
 		healthRoute,
 		aiReportsRoute,
+		aiControlRoute,
 		connectorsRoute,
 		sitesRoute,
 		siteDetailRoute,
@@ -198,6 +207,7 @@ function AppShell() {
 					<NavLink to="/" icon={<LayoutDashboard size={18} />} label={text.today} />
 					<NavLink to="/life" icon={<NotebookPen size={18} />} label={text.life} />
 					<NavLink to="/health" icon={<HeartPulse size={18} />} label={text.health} />
+					<NavLink to="/ai-control" icon={<BrainCircuit size={18} />} label={text.aiControl} />
 					<NavLink to="/ai-reports" icon={<Bot size={18} />} label={text.aiReports} />
 					<NavLink to="/connectors" icon={<Cable size={18} />} label={text.connectors} />
 					<NavLink to="/sites" icon={<Globe2 size={18} />} label={text.sites} />
@@ -237,6 +247,7 @@ function NavLink({
 		| "/dashboard"
 		| "/life"
 		| "/health"
+		| "/ai-control"
 		| "/ai-reports"
 		| "/connectors"
 		| "/sites"
@@ -476,6 +487,136 @@ function AiReportsPage() {
 				)}
 			</section>
 		</PageFrame>
+	);
+}
+
+function AiControlPage() {
+	const [message, setMessage] = useState("");
+	const [mode, setMode] = useState<"chat" | "summarize" | "command_preview">("chat");
+	const [selectedProvider, setSelectedProvider] = useState<LlmProviderId>("gemini");
+	const [lastRun, setLastRun] = useState<LlmRun>();
+	const [isRunning, setIsRunning] = useState(false);
+	const providers = useQuery({
+		queryKey: ["llm-providers"],
+		queryFn: rpcClient.getLlmProviders,
+	});
+	const history = useQuery({
+		queryKey: ["llm-history"],
+		queryFn: rpcClient.getLlmHistory,
+	});
+
+	const run = async () => {
+		if (!message.trim()) {
+			return;
+		}
+		setIsRunning(true);
+		try {
+			const input = {
+				provider: selectedProvider,
+				message: message.trim(),
+				intent: mode,
+			};
+			const result =
+				mode === "summarize"
+					? await rpcClient.runLlmSummary(input)
+					: mode === "command_preview"
+						? await rpcClient.runLlmCommandPreview(input)
+						: await rpcClient.runLlmChat(input);
+			setLastRun(result);
+			await history.refetch();
+		} finally {
+			setIsRunning(false);
+		}
+	};
+
+	return (
+		<PageFrame title={text.aiControl} eyebrow="무료 우선 LLM Dispatcher">
+			<div className="llm-layout">
+				<section className="llm-compose">
+					<div className="llm-provider-grid">
+						{providers.data?.map((provider) => (
+							<ProviderCard
+								key={provider.id}
+								provider={provider}
+								selected={selectedProvider === provider.id}
+								onSelect={() => setSelectedProvider(provider.id)}
+							/>
+						))}
+					</div>
+					<div className="llm-mode-tabs">
+						<button type="button" aria-pressed={mode === "chat"} onClick={() => setMode("chat")}>
+							대화
+						</button>
+						<button type="button" aria-pressed={mode === "summarize"} onClick={() => setMode("summarize")}>
+							요약
+						</button>
+						<button
+							type="button"
+							aria-pressed={mode === "command_preview"}
+							onClick={() => setMode("command_preview")}
+						>
+							명령 초안
+						</button>
+					</div>
+					<textarea
+						value={message}
+						onChange={(event) => setMessage(event.target.value)}
+						placeholder="예: 오늘 받은 작업보고와 뉴스 PDF를 짧게 요약해줘."
+					/>
+					<button className="llm-run-button" type="button" disabled={isRunning} onClick={run}>
+						{isRunning ? "실행 중" : "실행"}
+					</button>
+					{lastRun ? <LlmRunCard run={lastRun} featured /> : null}
+				</section>
+				<section className="llm-history">
+					<div className="direct-section-title">
+						<h2>최근 실행</h2>
+						<span>API Key가 없어도 fallback 기록이 남습니다.</span>
+					</div>
+					<div className="compact-list">
+						{history.data?.length ? (
+							history.data.map((run) => <LlmRunCard run={run} key={run.id} />)
+						) : (
+							<div className="direct-empty">아직 실행 기록이 없습니다.</div>
+						)}
+					</div>
+				</section>
+			</div>
+		</PageFrame>
+	);
+}
+
+function ProviderCard({
+	onSelect,
+	provider,
+	selected,
+}: {
+	onSelect: () => void;
+	provider: LlmProvider;
+	selected: boolean;
+}) {
+	return (
+		<button className="provider-card" type="button" data-selected={selected} onClick={onSelect}>
+			<span>{provider.freeTier ? "무료 우선" : "유료"}</span>
+			<strong>{provider.name}</strong>
+			<small>{provider.model}</small>
+			<em>{provider.status === "ready" ? "연결됨" : provider.status === "needs_key" ? "키 필요" : "준비중"}</em>
+		</button>
+	);
+}
+
+function LlmRunCard({ run, featured }: { run: LlmRun; featured?: boolean }) {
+	return (
+		<article className={featured ? "llm-run-card featured" : "llm-run-card"}>
+			<div>
+				<p>
+					{run.provider} · {run.model} · {run.status}
+				</p>
+				<h3>{run.prompt}</h3>
+			</div>
+			<span>{run.response}</span>
+			<small>{new Date(run.createdAt).toLocaleString()}</small>
+		</article>
 	);
 }
 

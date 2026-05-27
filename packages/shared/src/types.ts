@@ -313,3 +313,43 @@ export type TodaySnapshot = {
 	aiReports: AiReport[];
 	todayNews: WorkItem[];
 };
+
+export type LlmProviderId = "gemini" | "openrouter" | "ollama";
+
+export type LlmProvider = {
+	id: LlmProviderId;
+	name: string;
+	model: string;
+	status: "ready" | "needs_key" | "local_only" | "disabled";
+	freeTier: boolean;
+	description: string;
+};
+
+export type LlmMessage = {
+	role: "system" | "user" | "assistant";
+	content: string;
+};
+
+export type LlmRun = {
+	id: string;
+	provider: LlmProviderId;
+	model: string;
+	prompt: string;
+	response: string;
+	intent: "chat" | "summarize" | "command_preview";
+	status: "completed" | "fallback" | "failed";
+	usage?: {
+		inputTokens?: number;
+		outputTokens?: number;
+		totalTokens?: number;
+	};
+	createdAt: ISODateTime;
+};
+
+export type NewLlmChat = {
+	provider?: LlmProviderId;
+	model?: string;
+	message: string;
+	intent?: "chat" | "summarize" | "command_preview";
+	context?: Record<string, unknown>;
+};
