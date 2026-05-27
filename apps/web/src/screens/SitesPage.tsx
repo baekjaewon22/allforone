@@ -1,34 +1,34 @@
-import { useQuery } from "@tanstack/react-query";
+﻿import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { rpcClient } from "../lib/rpcClient";
 
 const ko = {
-	adminFallback: "\uad00\ub9ac\uc790",
-	embeddedAdmin: "\ub0b4\uc7a5 \uad00\ub9ac\uc790 \ud654\uba74",
-	fullView: "\uc804\uccb4\ubcf4\uae30",
-	exitFullView: "\uc804\uccb4\ubcf4\uae30 \uc885\ub8cc",
-	loading: "\ubd88\ub7ec\uc624\ub294 \uc911",
-	managedSite: "\uad00\ub9ac \uc0ac\uc774\ud2b8",
-	managedTargets: "\ud1b5\ud569 \uad00\ub9ac \ub300\uc0c1",
-	open: "\uc5f4\uae30",
+	adminFallback: "관리자",
+	embeddedAdmin: "내장 관리자 화면",
+	fullView: "전체보기",
+	exitFullView: "전체보기 종료",
+	loading: "불러오는 중",
+	managedSite: "관리 사이트",
+	managedTargets: "통합 관리 대상",
+	open: "열기",
 };
 
 const statusLabel: Record<string, string> = {
-	active: "\ud65c\uc131",
-	paused: "\uc77c\uc2dc\uc911\uc9c0",
-	archived: "\ubcf4\uad00\ub428",
+	active: "활성",
+	paused: "일시중지",
+	archived: "보관됨",
 };
 
 const siteCardVisuals: Record<string, { className: string; label: string; previewUrl: string }> = {
 	"my-auction-docs": {
 		className: "site-preview-mydocs",
-		label: "\ubb38\uc11c \uad00\ub9ac",
+		label: "문서 관리",
 		previewUrl: "https://my-docs.kr",
 	},
 	"landing-law": {
 		className: "site-preview-law",
-		label: "\ubc95\ubb34 \uad00\ub9ac",
+		label: "법무 관리",
 		previewUrl: "https://lawitgo.com",
 	},
 };
@@ -36,7 +36,7 @@ const siteCardVisuals: Record<string, { className: string; label: string; previe
 function getSiteVisual(siteId: string) {
 	return siteCardVisuals[siteId] ?? {
 		className: "site-preview-default",
-		label: "\uc6b4\uc601 \uad00\ub9ac",
+		label: "운영 관리",
 		previewUrl: "",
 	};
 }
@@ -190,3 +190,4 @@ export function SiteDetailPage({ siteId }: { siteId: string }) {
 		</section>
 	);
 }
+

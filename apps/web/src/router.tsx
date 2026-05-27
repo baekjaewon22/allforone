@@ -1,4 +1,4 @@
-import { enabledConnectors } from "@all-for-one/connectors";
+﻿import { enabledConnectors } from "@all-for-one/connectors";
 import type { AiReport, DailyLog, HealthEntry, WorkItem } from "@all-for-one/shared";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -29,40 +29,40 @@ import { LoginPage } from "./screens/LoginPage";
 import { SiteDetailPage, SitesPage } from "./screens/SitesPage";
 
 const text = {
-	today: "\uC624\uB298",
-	dashboard: "\uB300\uC2DC\uBCF4\uB4DC",
-	life: "\uC77C\uC0C1 \uAE30\uB85D",
-	health: "\uAC74\uAC15",
-	aiReports: "AI \uC5C5\uBB34\uBCF4\uACE0",
-	connectors: "\uC5F0\uB3D9 \uAD00\uB9AC",
-	sites: "\uAD00\uB9AC \uC0AC\uC774\uD2B8",
-	work: "\uC791\uC5C5\uD568",
-	todayNews: "\uC624\uB298\uC758 \uB274\uC2A4",
-	settings: "\uC124\uC815",
-	logout: "\uB85C\uADF8\uC544\uC6C3",
-	localUser: "\uB85C\uCEEC \uC0AC\uC6A9\uC790",
+	today: "오늘",
+	dashboard: "대시보드",
+	life: "일상 기록",
+	health: "건강",
+	aiReports: "AI 업무보고",
+	connectors: "연동 관리",
+	sites: "관리 사이트",
+	work: "작업함",
+	todayNews: "오늘의 뉴스",
+	settings: "설정",
+	logout: "로그아웃",
+	localUser: "로컬 사용자",
 };
 
 const statusLabel: Record<string, string> = {
-	ready: "\uC900\uBE44\uB428",
-	needs_auth: "\uC778\uC99D \uD544\uC694",
-	offline: "\uC624\uD504\uB77C\uC778",
-	new: "\uC2E0\uADDC",
-	reviewed: "\uD655\uC778\uB428",
-	archived: "\uBCF4\uAD00\uB428",
-	received: "\uC218\uC2E0\uB428",
-	needs_review: "\uAC80\uD1A0 \uD544\uC694",
-	applied: "\uBC18\uC601\uB428",
-	on_hold: "\uBCF4\uB958",
-	discarded: "\uD3D0\uAE30",
+	ready: "준비됨",
+	needs_auth: "인증 필요",
+	offline: "오프라인",
+	new: "신규",
+	reviewed: "확인됨",
+	archived: "보관됨",
+	received: "수신됨",
+	needs_review: "검토 필요",
+	applied: "반영됨",
+	on_hold: "보류",
+	discarded: "폐기",
 };
 
 const kindLabel: Record<string, string> = {
-	file: "\uD30C\uC77C",
-	note: "\uBA54\uBAA8",
-	task: "\uC791\uC5C5",
-	snapshot: "\uC2A4\uB0C5\uC0F7",
-	link: "\uB9C1\uD06C",
+	file: "파일",
+	note: "메모",
+	task: "작업",
+	snapshot: "스냅샷",
+	link: "링크",
 };
 
 const rootRoute = createRootRoute({
@@ -194,7 +194,7 @@ function AppShell() {
 					<Activity aria-hidden="true" size={22} />
 					<span>All For One</span>
 				</div>
-				<nav className="nav-list" aria-label="\uC8FC\uC694 \uBA54\uB274">
+				<nav className="nav-list" aria-label="주요 메뉴">
 					<NavLink to="/" icon={<LayoutDashboard size={18} />} label={text.today} />
 					<NavLink to="/life" icon={<NotebookPen size={18} />} label={text.life} />
 					<NavLink to="/health" icon={<HeartPulse size={18} />} label={text.health} />
@@ -267,42 +267,42 @@ function TodayPage() {
 	const data = today.data;
 
 	return (
-		<PageFrame title={text.today} eyebrow="\uAC1C\uC778 \uC6B4\uC601 \uC13C\uD130">
+		<PageFrame title={text.today} eyebrow="개인 운영 센터">
 			<div className="today-hero">
 				<div>
 					<p className="app-eyebrow">{data?.date ?? new Date().toISOString().slice(0, 10)}</p>
-					<h2>{data?.dailyLog?.summary ?? "\uC624\uB298\uC758 \uAE30\uB85D\uC774 \uC544\uC9C1 \uC5C6\uC2B5\uB2C8\uB2E4."}</h2>
+					<h2>{data?.dailyLog?.summary ?? "오늘의 기록이 아직 없습니다."}</h2>
 					<span>
 						{data?.dailyLog?.tomorrow ??
-							"\uC77C\uC0C1, \uAC74\uAC15, AI \uC5C5\uBB34\uBCF4\uACE0\uB97C \uC774 \uD654\uBA74\uC5D0\uC11C \uD55C\uBC88\uC5D0 \uD655\uC778\uD569\uB2C8\uB2E4."}
+							"일상, 건강, AI 업무보고를 이 화면에서 한번에 확인합니다."}
 					</span>
 				</div>
 				<div className="today-score-grid">
-					<ScoreCard label="\uCEE8\uB514\uC158" value={data?.healthEntry?.condition ?? data?.dailyLog?.condition} suffix="/10" />
-					<ScoreCard label="\uC218\uBA74" value={data?.healthEntry?.sleepHours ?? data?.dailyLog?.sleepHours} suffix="\uC2DC\uAC04" />
-					<ScoreCard label="\uC9D1\uC911" value={data?.dailyLog?.focus} suffix="/10" />
+					<ScoreCard label="컨디션" value={data?.healthEntry?.condition ?? data?.dailyLog?.condition} suffix="/10" />
+					<ScoreCard label="수면" value={data?.healthEntry?.sleepHours ?? data?.dailyLog?.sleepHours} suffix="시간" />
+					<ScoreCard label="집중" value={data?.dailyLog?.focus} suffix="/10" />
 				</div>
 			</div>
 			<div className="today-grid">
-				<TodayPanel title="\uBBF8\uCC98\uB9AC \uC791\uC5C5" count={data?.openWorkItems.length ?? 0} to="/work">
+				<TodayPanel title="미처리 작업" count={data?.openWorkItems.length ?? 0} to="/work">
 					{data?.openWorkItems.slice(0, 4).map((item) => (
 						<CompactLine key={item.id} title={item.title} meta={item.deviceName} />
 					))}
 				</TodayPanel>
-				<TodayPanel title="AI \uC5C5\uBB34\uBCF4\uACE0" count={data?.aiReports.length ?? 0} to="/ai-reports">
+				<TodayPanel title="AI 업무보고" count={data?.aiReports.length ?? 0} to="/ai-reports">
 					{data?.aiReports.slice(0, 4).map((report) => (
 						<CompactLine key={report.id} title={report.taskTitle} meta={report.provider} />
 					))}
 				</TodayPanel>
-				<TodayPanel title="\uC624\uB298\uC758 \uB274\uC2A4" count={data?.todayNews.length ?? 0} to="/news">
+				<TodayPanel title="오늘의 뉴스" count={data?.todayNews.length ?? 0} to="/news">
 					{data?.todayNews.slice(0, 4).map((item) => (
 						<CompactLine key={item.id} title={item.title} meta={item.path ?? "PDF"} />
 					))}
 				</TodayPanel>
-				<TodayPanel title="\uAC74\uAC15" count={data?.healthEntry ? 1 : 0} to="/health">
+				<TodayPanel title="건강" count={data?.healthEntry ? 1 : 0} to="/health">
 					<CompactLine
-						title={data?.healthEntry?.symptoms ?? "\uC624\uB298 \uAC74\uAC15 \uAE30\uB85D"}
-						meta={`\uC2A4\uD2B8\uB808\uC2A4 ${data?.healthEntry?.stress ?? "-"} / \uC6B4\uB3D9 ${data?.healthEntry?.exerciseMinutes ?? 0}\uBD84`}
+						title={data?.healthEntry?.symptoms ?? "오늘 건강 기록"}
+						meta={`스트레스 ${data?.healthEntry?.stress ?? "-"} / 운동 ${data?.healthEntry?.exerciseMinutes ?? 0}분`}
 					/>
 				</TodayPanel>
 			</div>
@@ -318,11 +318,11 @@ function DashboardPage() {
 	const now = new Date().toISOString();
 
 	return (
-		<PageFrame title={text.dashboard} eyebrow="\uC5C5\uBB34 \uD604\uD669">
+		<PageFrame title={text.dashboard} eyebrow="업무 현황">
 			<div className="widget-grid">
-				<WidgetSlot title="\uC624\uB298 \uC77C\uC815" value={`${snapshot.data?.schedules.length ?? 0}\uAC74`} />
-				<WidgetSlot title="\uC8FC\uC694 \uC9C0\uD45C" value={`${snapshot.data?.metrics.length ?? 0}\uAC1C`} />
-				<WidgetSlot title="\uBCF4\uACE0 \uC694\uC57D" value={`${snapshot.data?.reports.length ?? 0}\uAC74`} />
+				<WidgetSlot title="오늘 일정" value={`${snapshot.data?.schedules.length ?? 0}건`} />
+				<WidgetSlot title="주요 지표" value={`${snapshot.data?.metrics.length ?? 0}개`} />
+				<WidgetSlot title="보고 요약" value={`${snapshot.data?.reports.length ?? 0}건`} />
 				{enabledConnectors.flatMap((connector) =>
 					connector.widgets.map((widget) => (
 						<section className="widget-slot" key={`${connector.id}:${widget.id}`}>
@@ -346,7 +346,7 @@ function ConnectorsPage() {
 	});
 
 	return (
-		<PageFrame title={text.connectors} eyebrow="\uC5F0\uACB0 \uC0C1\uD0DC">
+		<PageFrame title={text.connectors} eyebrow="연결 상태">
 			<div className="connector-list">
 				{connectors.data?.map((connector) => (
 					<section className="connector-row" key={connector.id}>
@@ -369,32 +369,32 @@ function LifePage() {
 	});
 
 	return (
-		<PageFrame title={text.life} eyebrow="\uD558\uB8E8 \uAE30\uB85D">
+		<PageFrame title={text.life} eyebrow="하루 기록">
 			<div className="board-toolbar">
 				<div>
 					<strong>{logs.data?.length ?? 0}</strong>
-					<span>\uC800\uC7A5\uB41C \uAE30\uB85D</span>
+					<span>저장된 기록</span>
 				</div>
 				<div>
 					<strong>{average(logs.data?.map((item) => item.condition)).toFixed(1)}</strong>
-					<span>\uD3C9\uADE0 \uCEE8\uB514\uC158</span>
+					<span>평균 컨디션</span>
 				</div>
 				<div>
 					<strong>{average(logs.data?.map((item) => item.focus)).toFixed(1)}</strong>
-					<span>\uD3C9\uADE0 \uC9D1\uC911\uB3C4</span>
+					<span>평균 집중도</span>
 				</div>
 			</div>
 			<section className="board-panel">
 				<div className="board-header board-header-life">
-					<span>\uB0A0\uC9DC</span>
-					<span>\uC694\uC57D</span>
-					<span>\uCEE8\uB514\uC158</span>
-					<span>\uB0B4\uC77C</span>
+					<span>날짜</span>
+					<span>요약</span>
+					<span>컨디션</span>
+					<span>내일</span>
 				</div>
 				{logs.data?.length ? (
 					logs.data.map((log) => <DailyLogRow item={log} key={log.id} />)
 				) : (
-					<EmptyBoard label="\uC544\uC9C1 \uC77C\uC0C1 \uAE30\uB85D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4." />
+					<EmptyBoard label="아직 일상 기록이 없습니다." />
 				)}
 			</section>
 		</PageFrame>
@@ -408,32 +408,32 @@ function HealthPage() {
 	});
 
 	return (
-		<PageFrame title={text.health} eyebrow="\uCEE8\uB514\uC158 \uAD00\uB9AC">
+		<PageFrame title={text.health} eyebrow="컨디션 관리">
 			<div className="board-toolbar">
 				<div>
 					<strong>{average(entries.data?.map((item) => item.sleepHours)).toFixed(1)}</strong>
-					<span>\uD3C9\uADE0 \uC218\uBA74</span>
+					<span>평균 수면</span>
 				</div>
 				<div>
 					<strong>{average(entries.data?.map((item) => item.condition)).toFixed(1)}</strong>
-					<span>\uD3C9\uADE0 \uCEE8\uB514\uC158</span>
+					<span>평균 컨디션</span>
 				</div>
 				<div>
 					<strong>{sum(entries.data?.map((item) => item.exerciseMinutes))}</strong>
-					<span>\uC6B4\uB3D9 \uBD84</span>
+					<span>운동 분</span>
 				</div>
 			</div>
 			<section className="board-panel">
 				<div className="board-header board-header-health">
-					<span>\uB0A0\uC9DC</span>
-					<span>\uC218\uBA74/\uC6B4\uB3D9</span>
-					<span>\uCEE8\uB514\uC158</span>
-					<span>\uBA54\uBAA8</span>
+					<span>날짜</span>
+					<span>수면/운동</span>
+					<span>컨디션</span>
+					<span>메모</span>
 				</div>
 				{entries.data?.length ? (
 					entries.data.map((entry) => <HealthEntryRow item={entry} key={entry.id} />)
 				) : (
-					<EmptyBoard label="\uC544\uC9C1 \uAC74\uAC15 \uAE30\uB85D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4." />
+					<EmptyBoard label="아직 건강 기록이 없습니다." />
 				)}
 			</section>
 		</PageFrame>
@@ -447,32 +447,32 @@ function AiReportsPage() {
 	});
 
 	return (
-		<PageFrame title={text.aiReports} eyebrow="AI \uC9C0\uC2DC \uACB0\uACFC">
+		<PageFrame title={text.aiReports} eyebrow="AI 지시 결과">
 			<div className="board-toolbar">
 				<div>
 					<strong>{reports.data?.length ?? 0}</strong>
-					<span>\uC218\uC2E0 \uBCF4\uACE0</span>
+					<span>수신 보고</span>
 				</div>
 				<div>
 					<strong>{reports.data?.filter((item) => item.status === "needs_review").length ?? 0}</strong>
-					<span>\uAC80\uD1A0 \uD544\uC694</span>
+					<span>검토 필요</span>
 				</div>
 				<div>
 					<strong>{reports.data?.filter((item) => item.status === "applied").length ?? 0}</strong>
-					<span>\uBC18\uC601\uB428</span>
+					<span>반영됨</span>
 				</div>
 			</div>
 			<section className="board-panel">
 				<div className="board-header board-header-ai">
-					<span>\uC5C5\uBB34</span>
+					<span>업무</span>
 					<span>AI</span>
-					<span>\uC218\uC2E0\uC77C</span>
-					<span>\uC0C1\uD0DC</span>
+					<span>수신일</span>
+					<span>상태</span>
 				</div>
 				{reports.data?.length ? (
 					reports.data.map((report) => <AiReportRow item={report} key={report.id} />)
 				) : (
-					<EmptyBoard label="\uC544\uC9C1 AI \uC5C5\uBB34\uBCF4\uACE0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4." />
+					<EmptyBoard label="아직 AI 업무보고가 없습니다." />
 				)}
 			</section>
 		</PageFrame>
@@ -486,33 +486,33 @@ function WorkInboxPage() {
 	});
 
 	return (
-		<PageFrame title={text.work} eyebrow="\uCEF4\uD4E8\uD130 \uC791\uC5C5 \uC218\uC2E0">
+		<PageFrame title={text.work} eyebrow="컴퓨터 작업 수신">
 			<div className="site-overview">
 				<div>
-					<p>\uC5F0\uACB0\uB41C \uCEF4\uD4E8\uD130</p>
+					<p>연결된 컴퓨터</p>
 					<strong>{intake.data?.devices.length ?? 0}</strong>
 				</div>
 				<div>
-					<p>\uC2E0\uADDC \uC791\uC5C5</p>
+					<p>신규 작업</p>
 					<strong>{intake.data?.items.filter((item) => item.status === "new").length ?? 0}</strong>
 				</div>
 				<div>
-					<p>\uC218\uC2E0 \uC8FC\uC18C</p>
+					<p>수신 주소</p>
 					<strong>/work/ingest</strong>
 				</div>
 				<div>
-					<p>\uC778\uC99D \uD5E4\uB354</p>
+					<p>인증 헤더</p>
 					<strong>X-AFO-Device-Key</strong>
 				</div>
 			</div>
 			<div className="work-grid">
 				<section className="site-section">
-					<h2>\uC5F0\uACB0\uB41C \uCEF4\uD4E8\uD130</h2>
+					<h2>연결된 컴퓨터</h2>
 					<div className="site-section-list">
 						{intake.data?.devices.map((device) => (
 							<div className="site-row" key={device.id}>
 								<div>
-									<p>{device.platform ?? "\uD50C\uB7AB\uD3FC \uC5C6\uC74C"}</p>
+									<p>{device.platform ?? "플랫폼 없음"}</p>
 									<h3>{device.name}</h3>
 									<span>{device.hostname ?? device.id}</span>
 								</div>
@@ -522,7 +522,7 @@ function WorkInboxPage() {
 					</div>
 				</section>
 				<section className="site-section">
-					<h2>\uCD5C\uADFC \uC791\uC5C5</h2>
+					<h2>최근 작업</h2>
 					<div className="site-section-list">
 						{intake.data?.items.map((item) => (
 							<WorkItemRow item={item} key={item.id} />
@@ -542,15 +542,15 @@ function TodayNewsPage() {
 	const items = intake.data?.todayNews ?? [];
 
 	return (
-		<PageFrame title={text.todayNews} eyebrow="PDF \uAC8C\uC2DC\uD310">
+		<PageFrame title={text.todayNews} eyebrow="PDF 게시판">
 			<div className="board-toolbar">
 				<div>
 					<strong>{items.length}</strong>
-					<span>\uC218\uC2E0\uB41C PDF</span>
+					<span>수신된 PDF</span>
 				</div>
 				<div>
-					<strong>31\uC77C</strong>
-					<span>\uC790\uB3D9 \uBCF4\uAD00 \uAE30\uAC04</span>
+					<strong>31일</strong>
+					<span>자동 보관 기간</span>
 				</div>
 				<div>
 					<strong>/work/news/today</strong>
@@ -559,16 +559,16 @@ function TodayNewsPage() {
 			</div>
 			<section className="board-panel">
 				<div className="board-header">
-					<span>\uC81C\uBAA9</span>
-					<span>\uD30C\uC77C</span>
-					<span>\uC218\uC2E0\uC77C</span>
-					<span>\uC0C1\uD0DC</span>
+					<span>제목</span>
+					<span>파일</span>
+					<span>수신일</span>
+					<span>상태</span>
 				</div>
 				{items.length ? (
 					items.map((item) => <TodayNewsRow item={item} key={item.id} />)
 				) : (
 					<div className="empty-state">
-						<strong>\uC544\uC9C1 \uC218\uC2E0\uB41C \uB274\uC2A4 PDF\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</strong>
+						<strong>아직 수신된 뉴스 PDF가 없습니다.</strong>
 						<span>POST /work/news/today</span>
 					</div>
 				)}
@@ -578,24 +578,24 @@ function TodayNewsPage() {
 }
 
 function TodayNewsRow({ item }: { item: WorkItem }) {
-	const fileName = item.path ?? getStringMetadata(item, "filename") ?? "PDF";
+	const fileName = humanText(item.path ?? getStringMetadata(item, "filename") ?? "PDF");
 	const hasInlineFile = Boolean(item.metadata?.inlineFileStored);
 
 	return (
 		<div className="board-row">
 			<div>
-				<h3>{item.title}</h3>
-				<p>{item.summary ?? "\uC694\uC57D \uC5C6\uC74C"}</p>
+				<h3>{humanText(item.title)}</h3>
+				<p>{humanText(item.summary ?? "요약 없음")}</p>
 			</div>
 			<span>{fileName}</span>
 			<span>{new Date(item.occurredAt).toLocaleString()}</span>
 			<div className="board-actions">
 				{item.url ? (
 					<a className="inline-action" href={item.url} target="_blank" rel="noreferrer">
-						\uC5F4\uAE30
+						열기
 					</a>
 				) : (
-					<span className="pill">{hasInlineFile ? "\uC800\uC7A5\uB428" : "\uB9C1\uD06C \uC5C6\uC74C"}</span>
+					<span className="pill">{hasInlineFile ? "저장됨" : "링크 없음"}</span>
 				)}
 			</div>
 		</div>
@@ -607,11 +607,11 @@ function DailyLogRow({ item }: { item: DailyLog }) {
 		<div className="board-row board-row-life">
 			<span>{item.logDate}</span>
 			<div>
-				<h3>{item.summary ?? "\uC694\uC57D \uC5C6\uC74C"}</h3>
-				<p>{item.wins ?? item.blockers ?? "\uAE30\uB85D\uB41C \uBA54\uBAA8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4."}</p>
+				<h3>{humanText(item.summary ?? "요약 없음")}</h3>
+				<p>{humanText(item.wins ?? item.blockers ?? "기록된 메모가 없습니다.")}</p>
 			</div>
 			<span>{item.condition ? `${item.condition}/10` : "-"}</span>
-			<span>{item.tomorrow ?? "-"}</span>
+			<span>{humanText(item.tomorrow ?? "-")}</span>
 		</div>
 	);
 }
@@ -625,8 +625,8 @@ function HealthEntryRow({ item }: { item: HealthEntry }) {
 			</span>
 			<span>{item.condition ? `${item.condition}/10` : "-"}</span>
 			<div>
-				<h3>{item.symptoms ?? item.mealNote ?? "\uBA54\uBAA8 \uC5C6\uC74C"}</h3>
-				<p>{item.medication ?? `\uC2A4\uD2B8\uB808\uC2A4 ${item.stress ?? "-"}/10`}</p>
+				<h3>{humanText(item.symptoms ?? item.mealNote ?? "메모 없음")}</h3>
+				<p>{humanText(item.medication ?? `스트레스 ${item.stress ?? "-"}/10`)}</p>
 			</div>
 		</div>
 	);
@@ -636,10 +636,10 @@ function AiReportRow({ item }: { item: AiReport }) {
 	return (
 		<div className="board-row board-row-ai">
 			<div>
-				<h3>{item.taskTitle}</h3>
-				<p>{item.result}</p>
+				<h3>{humanText(item.taskTitle)}</h3>
+				<p>{humanText(item.result)}</p>
 			</div>
-			<span>{item.provider}</span>
+			<span>{humanText(item.provider)}</span>
 			<span>{new Date(item.occurredAt).toLocaleString()}</span>
 			<span className="pill">{statusLabel[item.status] ?? item.status}</span>
 		</div>
@@ -651,10 +651,10 @@ function WorkItemRow({ item }: { item: WorkItem }) {
 		<div className="site-row">
 			<div>
 				<p>
-					{item.deviceName} · {kindLabel[item.kind] ?? item.kind}
+					{humanText(item.deviceName)} · {kindLabel[item.kind] ?? item.kind}
 				</p>
-				<h3>{item.title}</h3>
-				<span>{item.summary ?? item.path ?? item.url ?? "\uC0C1\uC138 \uB0B4\uC6A9 \uC5C6\uC74C"}</span>
+				<h3>{humanText(item.title)}</h3>
+				<span>{humanText(item.summary ?? item.path ?? item.url ?? "상세 내용 없음")}</span>
 			</div>
 			<strong>{statusLabel[item.status] ?? item.status}</strong>
 		</div>
@@ -677,9 +677,9 @@ function ScoreCard({
 }) {
 	return (
 		<div className="score-card">
-			<span>{label}</span>
+			<span>{humanText(label)}</span>
 			<strong>{value ?? "-"}</strong>
-			<small>{suffix}</small>
+			<small>{humanText(suffix)}</small>
 		</div>
 	);
 }
@@ -695,10 +695,10 @@ function TodayPanel({
 			<div className="today-panel-header">
 				<div>
 					<h2>{title}</h2>
-					<span>{count}\uAC74</span>
+					<span>{count}건</span>
 				</div>
 				<Link className="inline-action" to={to}>
-					\uBCF4\uAE30
+					보기
 				</Link>
 			</div>
 			<div className="compact-list">{children}</div>
@@ -709,9 +709,15 @@ function TodayPanel({
 function CompactLine({ title, meta }: { title: string; meta: string }) {
 	return (
 		<div className="compact-line">
-			<strong>{title}</strong>
-			<span>{meta}</span>
+			<strong>{humanText(title)}</strong>
+			<span>{humanText(meta)}</span>
 		</div>
+	);
+}
+
+function humanText(value: string) {
+	return value.replace(/\\u([0-9a-fA-F]{4})/g, (_, code: string) =>
+		String.fromCharCode(Number.parseInt(code, 16)),
 	);
 }
 
@@ -719,7 +725,7 @@ function EmptyBoard({ label }: { label: string }) {
 	return (
 		<div className="empty-state">
 			<strong>{label}</strong>
-			<span>\uC218\uC2E0 \uB610\uB294 \uAE30\uB85D \uD6C4 \uC774\uACF3\uC5D0 \uD45C\uC2DC\uB429\uB2C8\uB2E4.</span>
+			<span>수신 또는 기록 후 이곳에 표시됩니다.</span>
 		</div>
 	);
 }
@@ -743,17 +749,17 @@ function SettingsPage() {
 	});
 
 	return (
-		<PageFrame title={text.settings} eyebrow="\uB85C\uCEEC \uAD6C\uC131">
+		<PageFrame title={text.settings} eyebrow="로컬 구성">
 			<div className="settings-panel">
 				<div>
-					<h2>RPC \uD074\uB77C\uC774\uC5B8\uD2B8</h2>
+					<h2>RPC 클라이언트</h2>
 					<p>
 						{health.data?.ok
-							? "\uB85C\uCEEC \uC5F0\uACB0\uC774 \uC815\uC0C1 \uC751\uB2F5 \uC911\uC785\uB2C8\uB2E4."
-							: "\uB85C\uCEEC \uC5F0\uACB0\uC744 \uD655\uC778\uD558\uB294 \uC911\uC785\uB2C8\uB2E4."}
+							? "로컬 연결이 정상 응답 중입니다."
+							: "로컬 연결을 확인하는 중입니다."}
 					</p>
 				</div>
-				<span>{health.data?.checkedAt ?? "\uD655\uC778 \uC911"}</span>
+				<span>{health.data?.checkedAt ?? "확인 중"}</span>
 			</div>
 		</PageFrame>
 	);
@@ -781,3 +787,4 @@ function WidgetSlot({ title, value }: { title: string; value: string }) {
 		</section>
 	);
 }
+
