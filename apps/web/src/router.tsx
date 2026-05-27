@@ -563,7 +563,7 @@ function PersonalSchedulePage() {
 						/>
 						<SpeechButton label="일정 메모 음성입력" speech={noteSpeech} />
 					</div>
-					<button type="button" onClick={save} disabled={isSaving}>
+					<button className="schedule-save-button" type="button" onClick={save} disabled={isSaving}>
 						{isSaving ? "저장 중" : "일정 저장"}
 					</button>
 				</section>
