@@ -1,48 +1,15 @@
-import { useEffect, useRef, useState } from "react";
-import * as THREE from "three";
-import NET from "vanta/dist/vanta.net.min";
+import { useState } from "react";
 import { setAuthSession } from "../auth";
-
-type VantaEffect = {
-	destroy: () => void;
-};
+import { HudBackground } from "./HudBackground";
 
 export function LoginPage() {
-	const backgroundRef = useRef<HTMLDivElement | null>(null);
 	const [showPassword, setShowPassword] = useState(false);
-
-	useEffect(() => {
-		if (!backgroundRef.current) {
-			return;
-		}
-
-		const effect = NET({
-			el: backgroundRef.current,
-			THREE,
-			mouseControls: true,
-			touchControls: true,
-			gyroControls: false,
-			minHeight: 200,
-			minWidth: 200,
-			scale: 1,
-			scaleMobile: 1,
-			color: 0x20f26a,
-			backgroundColor: 0x050708,
-			points: 13,
-			maxDistance: 21,
-			spacing: 15,
-			showDots: true,
-		}) as VantaEffect;
-
-		return () => effect.destroy();
-	}, []);
 
 	return (
 		<main className="hero-shell">
-			<div ref={backgroundRef} className="vanta-stage" aria-hidden="true" />
-			<div className="scene-shade" aria-hidden="true" />
+			<HudBackground />
 			<section className="login-panel" aria-label="All For One 로그인">
-				<p className="kicker">개인 통합 관리 시스템</p>
+				<p className="kicker">개인 통합 관리 시스템 · v1.0</p>
 				<h1>All For One</h1>
 				<form className="login-form">
 					<div className="login-fields">

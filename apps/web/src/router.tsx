@@ -20,6 +20,8 @@ import {
 	Inbox,
 	LayoutDashboard,
 	LogOut,
+	Mic,
+	MicOff,
 	Newspaper,
 	NotebookPen,
 	Settings,
@@ -27,6 +29,7 @@ import {
 import { useState, type PropsWithChildren, type ReactNode } from "react";
 import { clearAuthSession, getAuthSession, useAuthGuard } from "./auth";
 import { rpcClient } from "./lib/rpcClient";
+import { useSpeechInput } from "./lib/speech";
 import { LoginPage } from "./screens/LoginPage";
 import { SiteDetailPage, SitesPage } from "./screens/SitesPage";
 
@@ -481,6 +484,12 @@ function PersonalSchedulePage() {
 	const [location, setLocation] = useState("");
 	const [note, setNote] = useState("");
 	const [isSaving, setIsSaving] = useState(false);
+	const titleSpeech = useSpeechInput((text) =>
+		setTitle((current) => [current, text].filter(Boolean).join(" ")),
+	);
+	const noteSpeech = useSpeechInput((text) =>
+		setNote((current) => [current, text].filter(Boolean).join("\n")),
+	);
 	const schedules = useQuery({
 		queryKey: ["personal-schedules"],
 		queryFn: rpcClient.getPersonalSchedules,
@@ -519,11 +528,14 @@ function PersonalSchedulePage() {
 						<p className="app-eyebrow">빠른 추가</p>
 						<h2>일정을 바로 기록</h2>
 					</div>
-					<input
-						value={title}
-						onChange={(event) => setTitle(event.target.value)}
-						placeholder="예: 명승 정산 확인"
-					/>
+					<div className="voice-field">
+						<input
+							value={title}
+							onChange={(event) => setTitle(event.target.value)}
+							placeholder="예: 명승 정산 확인"
+						/>
+						<SpeechButton label="일정 제목 음성입력" speech={titleSpeech} />
+					</div>
 					<div className="schedule-form-grid">
 						<label>
 							<span>날짜</span>
@@ -543,11 +555,14 @@ function PersonalSchedulePage() {
 						onChange={(event) => setLocation(event.target.value)}
 						placeholder="장소 또는 관련 사이트"
 					/>
-					<textarea
-						value={note}
-						onChange={(event) => setNote(event.target.value)}
-						placeholder="메모"
-					/>
+					<div className="voice-field voice-field-textarea">
+						<textarea
+							value={note}
+							onChange={(event) => setNote(event.target.value)}
+							placeholder="메모"
+						/>
+						<SpeechButton label="일정 메모 음성입력" speech={noteSpeech} />
+					</div>
 					<button type="button" onClick={save} disabled={isSaving}>
 						{isSaving ? "저장 중" : "일정 저장"}
 					</button>
@@ -650,6 +665,9 @@ function AiControlPage() {
 	const [selectedProvider, setSelectedProvider] = useState<LlmProviderId>("gemini");
 	const [lastRun, setLastRun] = useState<LlmRun>();
 	const [isRunning, setIsRunning] = useState(false);
+	const messageSpeech = useSpeechInput((text) =>
+		setMessage((current) => [current, text].filter(Boolean).join("\n")),
+	);
 	const providers = useQuery({
 		queryKey: ["llm-providers"],
 		queryFn: rpcClient.getLlmProviders,
@@ -719,11 +737,14 @@ function AiControlPage() {
 							명령 초안
 						</button>
 					</div>
-					<textarea
-						value={message}
-						onChange={(event) => setMessage(event.target.value)}
-						placeholder="예: 오늘 받은 작업보고와 뉴스 PDF를 짧게 요약해줘."
-					/>
+					<div className="voice-field voice-field-textarea">
+						<textarea
+							value={message}
+							onChange={(event) => setMessage(event.target.value)}
+							placeholder="예: 오늘 받은 작업보고와 뉴스 PDF를 짧게 요약해줘."
+						/>
+						<SpeechButton label="AI 관제실 음성입력" speech={messageSpeech} />
+					</div>
 					<button className="llm-run-button" type="button" disabled={isRunning} onClick={run}>
 						{isRunning ? "실행 중" : "실행"}
 					</button>
@@ -763,6 +784,30 @@ function ProviderCard({
 			<small>{provider.model}</small>
 			<small>{provider.description}</small>
 			<em>{provider.status === "ready" ? "연결됨" : provider.status === "needs_key" ? "키 필요" : "준비중"}</em>
+		</button>
+	);
+}
+
+function SpeechButton({
+	label,
+	speech,
+}: {
+	label: string;
+	speech: ReturnType<typeof useSpeechInput>;
+}) {
+	const disabled = !speech.isSupported;
+	return (
+		<button
+			aria-label={disabled ? "이 브라우저는 음성입력을 지원하지 않습니다." : label}
+			className="speech-button"
+			data-listening={speech.isListening}
+			disabled={disabled}
+			onClick={speech.isListening ? speech.stop : speech.start}
+			title={disabled ? "이 브라우저는 음성입력을 지원하지 않습니다." : label}
+			type="button"
+		>
+			{speech.isListening ? <MicOff aria-hidden="true" size={18} /> : <Mic aria-hidden="true" size={18} />}
+			<span>{speech.isListening ? "듣는 중" : "음성"}</span>
 		</button>
 	);
 }
