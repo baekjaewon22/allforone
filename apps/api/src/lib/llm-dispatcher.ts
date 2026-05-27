@@ -94,6 +94,7 @@ async function callOpenRouter(
 		};
 	}
 
+	const prompt = await buildPrompt(input);
 	const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
 		method: "POST",
 		headers: {
@@ -112,7 +113,7 @@ async function callOpenRouter(
 				},
 				{
 					role: "user",
-					content: buildPrompt(input),
+					content: prompt,
 				},
 			],
 			temperature: input.intent === "command_preview" ? 0.2 : 0.5,
@@ -166,7 +167,7 @@ async function callGemini(
 		};
 	}
 
-	const prompt = buildPrompt(input);
+	const prompt = await buildPrompt(input);
 	const response = await fetch(
 		`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`,
 		{
@@ -222,7 +223,14 @@ async function callGemini(
 	};
 }
 
-function buildPrompt(input: NewLlmChat) {
+async function buildPrompt(input: NewLlmChat) {
+	const context = input.context ? { ...input.context } : undefined;
+	const weather = await getWeatherContext(context);
+	if (weather && context) {
+		context.weather = weather;
+		input.context = context;
+	}
+
 	const intentGuide =
 		input.intent === "summarize"
 			? "다음 내용을 한국어로 짧고 실행 가능한 요약으로 정리해줘."
@@ -237,4 +245,82 @@ function buildPrompt(input: NewLlmChat) {
 	]
 		.filter(Boolean)
 		.join("\n\n");
+}
+
+async function getWeatherContext(context?: Record<string, unknown>) {
+	const coordinates = parseCoordinates(context?.location);
+	if (!coordinates) {
+		return undefined;
+	}
+
+	try {
+		const url = new URL("https://api.open-meteo.com/v1/forecast");
+		url.searchParams.set("latitude", String(coordinates.latitude));
+		url.searchParams.set("longitude", String(coordinates.longitude));
+		url.searchParams.set(
+			"current",
+			"temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m",
+		);
+		url.searchParams.set("timezone", "auto");
+
+		const response = await fetch(url);
+		if (!response.ok) {
+			return undefined;
+		}
+
+		const body = (await response.json()) as {
+			current?: {
+				time?: string;
+				temperature_2m?: number;
+				relative_humidity_2m?: number;
+				weather_code?: number;
+				wind_speed_10m?: number;
+			};
+			current_units?: Record<string, string>;
+			timezone?: string;
+		};
+		if (!body.current) {
+			return undefined;
+		}
+
+		return {
+			source: "open-meteo",
+			timezone: body.timezone,
+			time: body.current.time,
+			temperature: formatWeatherValue(body.current.temperature_2m, body.current_units?.temperature_2m),
+			humidity: formatWeatherValue(
+				body.current.relative_humidity_2m,
+				body.current_units?.relative_humidity_2m,
+			),
+			windSpeed: formatWeatherValue(body.current.wind_speed_10m, body.current_units?.wind_speed_10m),
+			weatherCode: body.current.weather_code,
+		};
+	} catch {
+		return undefined;
+	}
+}
+
+function parseCoordinates(location: unknown) {
+	if (typeof location !== "string") {
+		return undefined;
+	}
+
+	const match =
+		location.match(/위도\s*(-?\d+(?:\.\d+)?)[,\s]+경도\s*(-?\d+(?:\.\d+)?)/) ??
+		location.match(/lat(?:itude)?\s*[:=]?\s*(-?\d+(?:\.\d+)?)[,\s]+lon(?:gitude)?\s*[:=]?\s*(-?\d+(?:\.\d+)?)/i);
+	if (!match) {
+		return undefined;
+	}
+
+	const latitude = Number(match[1]);
+	const longitude = Number(match[2]);
+	if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+		return undefined;
+	}
+
+	return { latitude, longitude };
+}
+
+function formatWeatherValue(value?: number, unit?: string) {
+	return typeof value === "number" ? `${value}${unit ?? ""}` : undefined;
 }

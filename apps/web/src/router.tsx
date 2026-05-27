@@ -20,6 +20,7 @@ import {
 	Inbox,
 	LayoutDashboard,
 	LogOut,
+	MapPin,
 	Mic,
 	MicOff,
 	Newspaper,
@@ -663,6 +664,10 @@ function AiControlPage() {
 	const [message, setMessage] = useState("");
 	const [mode, setMode] = useState<"chat" | "summarize" | "command_preview">("chat");
 	const [selectedProvider, setSelectedProvider] = useState<LlmProviderId>("gemini");
+	const [showHistory, setShowHistory] = useState(false);
+	const [locationContext, setLocationContext] = useState(() =>
+		typeof window === "undefined" ? "" : (window.localStorage.getItem("afo-location-context") ?? ""),
+	);
 	const [lastRun, setLastRun] = useState<LlmRun>();
 	const [isRunning, setIsRunning] = useState(false);
 	const messageSpeech = useSpeechInput((text) =>
@@ -687,6 +692,14 @@ function AiControlPage() {
 				provider: selectedProvider,
 				message: message.trim(),
 				intent: mode,
+				context: locationContext.trim()
+					? {
+							location: locationContext.trim(),
+							timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+						}
+					: {
+							timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+						},
 			};
 			const result =
 				mode === "summarize"
@@ -701,15 +714,38 @@ function AiControlPage() {
 		}
 	};
 
+	const updateLocationContext = (value: string) => {
+		setLocationContext(value);
+		window.localStorage.setItem("afo-location-context", value);
+	};
+
+	const detectLocation = () => {
+		if (!navigator.geolocation) {
+			updateLocationContext("브라우저 위치 권한을 지원하지 않습니다. 예: 서울 강남구처럼 직접 입력하세요.");
+			return;
+		}
+
+		navigator.geolocation.getCurrentPosition(
+			(position) => {
+				const { latitude, longitude } = position.coords;
+				updateLocationContext(`위도 ${latitude.toFixed(5)}, 경도 ${longitude.toFixed(5)}`);
+			},
+			() => {
+				updateLocationContext("위치 권한이 거부되었습니다. 예: 서울 강남구처럼 직접 입력하세요.");
+			},
+			{ enableHighAccuracy: false, maximumAge: 10 * 60 * 1000, timeout: 8000 },
+		);
+	};
+
 	return (
 		<PageFrame title={text.aiControl} eyebrow="무료 우선 LLM Dispatcher">
-			<div className="llm-layout">
+			<div className="llm-layout llm-layout-focused">
 				<section className="llm-compose">
+					<div className="llm-ambient" aria-hidden="true" />
 					<div className="llm-notice">
-						<strong>배포/모바일 실행 방식</strong>
+						<strong>AI 실행 콘솔</strong>
 						<span>
-							Gemini와 OpenRouter는 Cloudflare Worker에서 호출하므로 핸드폰에서도 동작합니다.
-							Ollama Local만 내 PC 전용입니다.
+							질문, 요약, 명령 초안을 한 곳에서 실행합니다. Gemini 실패 시 OpenRouter가 자동으로 대신 응답합니다.
 						</span>
 					</div>
 					<div className="llm-provider-grid">
@@ -737,6 +773,21 @@ function AiControlPage() {
 							명령 초안
 						</button>
 					</div>
+					<div className="llm-location-row">
+						<div>
+							<label htmlFor="llm-location">위치 컨텍스트</label>
+							<input
+								id="llm-location"
+								value={locationContext}
+								onChange={(event) => updateLocationContext(event.target.value)}
+								placeholder="예: 서울 강남구 또는 위도/경도"
+							/>
+						</div>
+						<button type="button" onClick={detectLocation}>
+							<MapPin aria-hidden="true" size={16} />
+							현재 위치
+						</button>
+					</div>
 					<div className="voice-field voice-field-textarea">
 						<textarea
 							value={message}
@@ -749,19 +800,30 @@ function AiControlPage() {
 						{isRunning ? "실행 중" : "실행"}
 					</button>
 					{lastRun ? <LlmRunCard run={lastRun} featured /> : null}
-				</section>
-				<section className="llm-history">
-					<div className="direct-section-title">
-						<h2>최근 실행</h2>
-						<span>Gemini 실패 시 OpenRouter가 자동으로 대신 실행됩니다.</span>
+					<div className="llm-history-toggle">
+						<button type="button" onClick={() => setShowHistory((value) => !value)}>
+							{showHistory ? "최근 질문 닫기" : "최근 질문 불러오기"}
+						</button>
 					</div>
-					<div className="compact-list">
-						{history.data?.length ? (
-							history.data.map((run) => <LlmRunCard run={run} key={run.id} />)
-						) : (
-							<div className="direct-empty">아직 실행 기록이 없습니다.</div>
-						)}
-					</div>
+					{showHistory ? (
+						<section className="llm-history-drawer">
+							{history.data?.length ? (
+								history.data.map((run) => (
+									<button
+										className="history-load-card"
+										key={run.id}
+										onClick={() => setMessage(run.prompt)}
+										type="button"
+									>
+										<strong>{run.prompt}</strong>
+										<span>{new Date(run.createdAt).toLocaleString()}</span>
+									</button>
+								))
+							) : (
+								<div className="direct-empty">아직 불러올 질문이 없습니다.</div>
+							)}
+						</section>
+					) : null}
 				</section>
 			</div>
 		</PageFrame>
@@ -782,7 +844,6 @@ function ProviderCard({
 			<span>{provider.freeTier ? "무료 우선" : "유료"}</span>
 			<strong>{provider.name}</strong>
 			<small>{provider.model}</small>
-			<small>{provider.description}</small>
 			<em>{provider.status === "ready" ? "연결됨" : provider.status === "needs_key" ? "키 필요" : "준비중"}</em>
 		</button>
 	);
