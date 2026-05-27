@@ -15,6 +15,7 @@ import {
 	BrainCircuit,
 	Cable,
 	CalendarDays,
+	Download,
 	Globe2,
 	HeartPulse,
 	Inbox,
@@ -27,7 +28,7 @@ import {
 	NotebookPen,
 	Settings,
 } from "lucide-react";
-import { useState, type PropsWithChildren, type ReactNode } from "react";
+import { useEffect, useState, type PropsWithChildren, type ReactNode } from "react";
 import { clearAuthSession, getAuthSession, useAuthGuard } from "./auth";
 import { rpcClient } from "./lib/rpcClient";
 import { useSpeechInput } from "./lib/speech";
@@ -247,6 +248,64 @@ function AppShell() {
 			<main className="workspace">
 				<Outlet />
 			</main>
+			<InstallAppButton />
+		</div>
+	);
+}
+
+type BeforeInstallPromptEvent = Event & {
+	prompt: () => Promise<void>;
+	userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
+function InstallAppButton() {
+	const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent>();
+	const [isStandalone, setIsStandalone] = useState(false);
+	const [showIosHint, setShowIosHint] = useState(false);
+
+	useEffect(() => {
+		const standalone =
+			window.matchMedia("(display-mode: standalone)").matches ||
+			("standalone" in navigator && Boolean(navigator.standalone));
+		setIsStandalone(standalone);
+
+		const handlePrompt = (event: Event) => {
+			event.preventDefault();
+			setInstallPrompt(event as BeforeInstallPromptEvent);
+		};
+		window.addEventListener("beforeinstallprompt", handlePrompt);
+		return () => window.removeEventListener("beforeinstallprompt", handlePrompt);
+	}, []);
+
+	if (isStandalone) {
+		return null;
+	}
+
+	const install = async () => {
+		if (!installPrompt) {
+			setShowIosHint((value) => !value);
+			return;
+		}
+
+		await installPrompt.prompt();
+		const choice = await installPrompt.userChoice;
+		if (choice.outcome === "accepted") {
+			setInstallPrompt(undefined);
+			setIsStandalone(true);
+		}
+	};
+
+	return (
+		<div className="install-app">
+			<button type="button" onClick={install}>
+				<Download aria-hidden="true" size={16} />
+				<span>앱 설치</span>
+			</button>
+			{showIosHint ? (
+				<p>
+					iPhone은 Safari 공유 버튼에서 <strong>홈 화면에 추가</strong>를 선택하세요.
+				</p>
+			) : null}
 		</div>
 	);
 }

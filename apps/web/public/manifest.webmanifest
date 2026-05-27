@@ -1,0 +1,26 @@
+{
+	"name": "All For One",
+	"short_name": "All For One",
+	"description": "개인 일정, 업무, 건강, 관리 사이트를 한곳에서 처리하는 개인 통합 관리 앱입니다.",
+	"start_url": "/",
+	"scope": "/",
+	"display": "standalone",
+	"background_color": "#f7faf6",
+	"theme_color": "#052e2b",
+	"orientation": "portrait-primary",
+	"categories": ["productivity", "utilities"],
+	"icons": [
+		{
+			"src": "/icons/icon.svg",
+			"sizes": "any",
+			"type": "image/svg+xml",
+			"purpose": "any"
+		},
+		{
+			"src": "/icons/maskable-icon.svg",
+			"sizes": "any",
+			"type": "image/svg+xml",
+			"purpose": "maskable"
+		}
+	]
+}

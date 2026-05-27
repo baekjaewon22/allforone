@@ -860,6 +860,51 @@ body {
 	padding: 34px;
 }
 
+.install-app {
+	position: fixed;
+	right: 18px;
+	bottom: 18px;
+	z-index: 30;
+	display: grid;
+	gap: 8px;
+	justify-items: end;
+	pointer-events: none;
+}
+
+.install-app button,
+.install-app p {
+	pointer-events: auto;
+	box-shadow: 0 18px 42px rgba(5, 46, 43, 0.22);
+}
+
+.install-app button {
+	height: 42px;
+	border: 1px solid rgba(20, 184, 166, 0.32);
+	border-radius: 999px;
+	padding: 0 16px;
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	color: #ffffff;
+	background: linear-gradient(135deg, #0f766e, #052e2b);
+	cursor: pointer;
+	font: inherit;
+	font-size: 13px;
+	font-weight: 900;
+}
+
+.install-app p {
+	max-width: 260px;
+	margin: 0;
+	border: 1px solid rgba(15, 118, 110, 0.16);
+	border-radius: 12px;
+	padding: 10px 12px;
+	color: #12352f;
+	background: rgba(255, 255, 255, 0.96);
+	font-size: 12px;
+	line-height: 1.45;
+}
+
 .page-frame {
 	max-width: 1160px;
 	display: grid;
@@ -2550,6 +2595,26 @@ body {
 	.app-shell {
 		display: block;
 		padding-bottom: 82px;
+	}
+
+	.install-app {
+		right: 12px;
+		bottom: calc(94px + env(safe-area-inset-bottom));
+	}
+
+	.install-app button {
+		width: 44px;
+		padding: 0;
+		justify-content: center;
+	}
+
+	.install-app button span {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
 	}
 
 	.sidebar {
