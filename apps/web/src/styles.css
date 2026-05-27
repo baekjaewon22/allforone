@@ -1334,6 +1334,164 @@ body {
 	white-space: pre-wrap;
 }
 
+.schedule-shell {
+	display: grid;
+	grid-template-columns: minmax(300px, 0.75fr) minmax(0, 1.25fr);
+	gap: 16px;
+	align-items: start;
+}
+
+.schedule-compose,
+.schedule-list-panel,
+.schedule-card {
+	border: 1px solid rgba(31, 45, 61, 0.1);
+	border-radius: 14px;
+	background: rgba(255, 255, 255, 0.95);
+	box-shadow: 0 18px 50px rgba(15, 23, 42, 0.07);
+}
+
+.schedule-compose {
+	position: sticky;
+	top: 24px;
+	padding: 16px;
+	display: grid;
+	gap: 12px;
+}
+
+.schedule-compose h2 {
+	margin: 4px 0 0;
+	font-size: 20px;
+}
+
+.schedule-compose input,
+.schedule-compose textarea {
+	width: 100%;
+	border: 1px solid rgba(31, 45, 61, 0.13);
+	border-radius: 12px;
+	padding: 12px 13px;
+	color: #0f172a;
+	background: #ffffff;
+	font: inherit;
+	outline: none;
+}
+
+.schedule-compose textarea {
+	min-height: 96px;
+	resize: vertical;
+}
+
+.schedule-compose input:focus,
+.schedule-compose textarea:focus {
+	border-color: rgba(37, 99, 235, 0.54);
+	box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.schedule-form-grid {
+	display: grid;
+	grid-template-columns: 1.2fr 0.9fr 0.9fr;
+	gap: 8px;
+}
+
+.schedule-form-grid label {
+	display: grid;
+	gap: 6px;
+}
+
+.schedule-form-grid span {
+	color: #64748b;
+	font-size: 12px;
+	font-weight: 850;
+}
+
+.schedule-compose button {
+	height: 44px;
+	border: 0;
+	border-radius: 12px;
+	color: #ffffff;
+	background: #2563eb;
+	cursor: pointer;
+	font-weight: 900;
+}
+
+.schedule-compose button:disabled {
+	opacity: 0.65;
+	cursor: progress;
+}
+
+.schedule-list-panel {
+	padding: 14px;
+}
+
+.schedule-summary {
+	margin-bottom: 12px;
+}
+
+.schedule-list {
+	display: grid;
+	gap: 10px;
+}
+
+.schedule-card {
+	padding: 14px;
+	display: grid;
+	grid-template-columns: 58px minmax(0, 1fr) auto;
+	gap: 12px;
+	align-items: center;
+	box-shadow: none;
+}
+
+.schedule-date-badge {
+	width: 58px;
+	height: 58px;
+	border-radius: 14px;
+	display: grid;
+	place-items: center;
+	align-content: center;
+	color: #1d4ed8;
+	background: #e8f0ff;
+}
+
+.schedule-date-badge strong {
+	font-size: 22px;
+	line-height: 1;
+}
+
+.schedule-date-badge span,
+.schedule-card p,
+.schedule-card span,
+.schedule-card small {
+	color: #64748b;
+	font-size: 12px;
+	font-weight: 800;
+}
+
+.schedule-card h3 {
+	margin: 3px 0 4px;
+	color: #111827;
+	font-size: 16px;
+	line-height: 1.25;
+}
+
+.schedule-card p {
+	margin: 0;
+}
+
+.schedule-card small {
+	border-radius: 999px;
+	padding: 7px 10px;
+	color: #1d4ed8;
+	background: #e8f0ff;
+}
+
+.schedule-card[data-status="done"] small {
+	color: #047857;
+	background: #dcfce7;
+}
+
+.schedule-card[data-status="cancelled"] {
+	opacity: 0.66;
+}
+
 .site-section {
 	padding: 18px;
 	display: grid;
@@ -1551,8 +1709,9 @@ body {
 .app-shell {
 	color: #18212b;
 	background:
-		radial-gradient(circle at 14% 0%, rgba(39, 135, 245, 0.12), transparent 28%),
-		linear-gradient(180deg, #f7f9fc 0%, #eef3f8 100%);
+		radial-gradient(circle at 14% 0%, rgba(37, 99, 235, 0.14), transparent 28%),
+		radial-gradient(circle at 88% 12%, rgba(20, 184, 166, 0.1), transparent 24%),
+		linear-gradient(180deg, #f8fafc 0%, #edf3f9 100%);
 }
 
 .sidebar {
@@ -1595,7 +1754,7 @@ body {
 
 .page-frame h1 {
 	color: #0f172a;
-	font-size: 34px;
+	font-size: clamp(28px, 4vw, 36px);
 	font-weight: 900;
 }
 
@@ -1674,7 +1833,8 @@ body {
 .today-panel h2,
 .board-row h3,
 .connector-row h2,
-.settings-panel h2 {
+.settings-panel h2,
+.schedule-compose h2 {
 	color: #111827;
 }
 
@@ -1790,8 +1950,14 @@ body {
 	.direct-hero,
 	.direct-stats,
 	.llm-layout,
-	.llm-provider-grid {
+	.llm-provider-grid,
+	.schedule-shell,
+	.schedule-form-grid {
 		grid-template-columns: 1fr;
+	}
+
+	.schedule-compose {
+		position: static;
 	}
 
 	.today-hero {
@@ -1931,7 +2097,25 @@ body {
 	}
 
 	.direct-hero,
-	.direct-section {
+	.direct-section,
+	.schedule-compose,
+	.schedule-list-panel {
 		padding: 14px;
+	}
+
+	.schedule-card {
+		grid-template-columns: 50px minmax(0, 1fr);
+		align-items: start;
+	}
+
+	.schedule-card small {
+		grid-column: 2;
+		width: fit-content;
+	}
+
+	.schedule-date-badge {
+		width: 50px;
+		height: 50px;
+		border-radius: 12px;
 	}
 }

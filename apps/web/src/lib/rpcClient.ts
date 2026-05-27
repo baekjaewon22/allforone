@@ -9,6 +9,8 @@ import type {
 	DailyLog,
 	HealthEntry,
 	Metric,
+	NewPersonalSchedule,
+	PersonalSchedule,
 	ReportItem,
 	ScheduleItem,
 	SiteAdminLink,
@@ -42,6 +44,7 @@ export type PersonalTodaySnapshot = {
 	date: string;
 	dailyLog?: DailyLog;
 	healthEntry?: HealthEntry;
+	schedules: PersonalSchedule[];
 	openWorkItems: WorkItem[];
 	aiReports: AiReport[];
 	todayNews: WorkItem[];
@@ -163,6 +166,7 @@ const workIntake: WorkIntakeSnapshot = {
 
 const personalToday: PersonalTodaySnapshot = {
 	date: now.slice(0, 10),
+	schedules: [],
 	openWorkItems: workIntake.items,
 	aiReports: [],
 	todayNews: [],
@@ -380,6 +384,24 @@ export const rpcClient = {
 		} catch {
 			return [];
 		}
+	},
+	async getPersonalSchedules(): Promise<PersonalSchedule[]> {
+		await delay();
+		try {
+			const response = await getJson<{ schedules: PersonalSchedule[] }>(
+				"/personal/schedules",
+			);
+			return response.schedules;
+		} catch {
+			return [];
+		}
+	},
+	async createPersonalSchedule(input: NewPersonalSchedule): Promise<PersonalSchedule> {
+		const response = await postJson<{ schedule: PersonalSchedule }>(
+			"/personal/schedules",
+			input,
+		);
+		return response.schedule;
 	},
 	async getAiReports(): Promise<AiReport[]> {
 		await delay();

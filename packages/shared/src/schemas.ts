@@ -267,6 +267,48 @@ export const newDailyLogSchema = dailyLogSchema.omit({
 	updatedAt: true,
 });
 
+export const personalScheduleStatusSchema = z.enum([
+	"planned",
+	"done",
+	"cancelled",
+]);
+
+export const personalScheduleSchema = z.object({
+	id: z.string().min(1),
+	title: z.string().min(1),
+	startAt: isoDateTimeSchema,
+	endAt: isoDateTimeSchema,
+	status: personalScheduleStatusSchema,
+	location: z.string().optional(),
+	note: z.string().optional(),
+	tags: z.array(z.string().min(1)).optional(),
+	createdAt: isoDateTimeSchema,
+	updatedAt: isoDateTimeSchema,
+});
+
+export const newPersonalScheduleSchema = personalScheduleSchema
+	.omit({
+		id: true,
+		status: true,
+		createdAt: true,
+		updatedAt: true,
+	})
+	.extend({
+		status: personalScheduleStatusSchema.optional(),
+	});
+
+export const patchPersonalScheduleSchema = personalScheduleSchema
+	.pick({
+		title: true,
+		startAt: true,
+		endAt: true,
+		status: true,
+		location: true,
+		note: true,
+		tags: true,
+	})
+	.partial();
+
 export const healthEntrySchema = z.object({
 	id: z.string().min(1),
 	entryDate: dateOnlySchema,

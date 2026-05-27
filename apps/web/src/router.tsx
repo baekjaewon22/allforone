@@ -1,5 +1,5 @@
 ﻿import { enabledConnectors } from "@all-for-one/connectors";
-import type { AiReport, DailyLog, HealthEntry, LlmProvider, LlmProviderId, LlmRun, WorkItem } from "@all-for-one/shared";
+import type { AiReport, DailyLog, HealthEntry, LlmProvider, LlmProviderId, LlmRun, PersonalSchedule, WorkItem } from "@all-for-one/shared";
 import { useQuery } from "@tanstack/react-query";
 import {
 	createRootRoute,
@@ -14,6 +14,7 @@ import {
 	Bot,
 	BrainCircuit,
 	Cable,
+	CalendarDays,
 	Globe2,
 	HeartPulse,
 	Inbox,
@@ -34,6 +35,7 @@ const text = {
 	dashboard: "대시보드",
 	life: "일상 기록",
 	health: "건강",
+	schedule: "스케줄",
 	aiReports: "AI 업무보고",
 	aiControl: "AI 관제실",
 	connectors: "연동 관리",
@@ -115,6 +117,12 @@ const healthRoute = createRoute({
 	component: HealthPage,
 });
 
+const personalScheduleRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/schedule",
+	component: PersonalSchedulePage,
+});
+
 const aiReportsRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/ai-reports",
@@ -170,6 +178,7 @@ const routeTree = rootRoute.addChildren([
 		dashboardRoute,
 		lifeRoute,
 		healthRoute,
+		personalScheduleRoute,
 		aiReportsRoute,
 		aiControlRoute,
 		connectorsRoute,
@@ -207,6 +216,7 @@ function AppShell() {
 					<NavLink to="/" icon={<LayoutDashboard size={18} />} label={text.today} />
 					<NavLink to="/life" icon={<NotebookPen size={18} />} label={text.life} />
 					<NavLink to="/health" icon={<HeartPulse size={18} />} label={text.health} />
+					<NavLink to="/schedule" icon={<CalendarDays size={18} />} label={text.schedule} />
 					<NavLink to="/ai-control" icon={<BrainCircuit size={18} />} label={text.aiControl} />
 					<NavLink to="/ai-reports" icon={<Bot size={18} />} label={text.aiReports} />
 					<NavLink to="/connectors" icon={<Cable size={18} />} label={text.connectors} />
@@ -247,6 +257,7 @@ function NavLink({
 		| "/dashboard"
 		| "/life"
 		| "/health"
+		| "/schedule"
 		| "/ai-control"
 		| "/ai-reports"
 		| "/connectors"
@@ -298,6 +309,15 @@ function TodayPage() {
 				<TodayPanel title="미처리 작업" count={data?.openWorkItems.length ?? 0} to="/work">
 					{data?.openWorkItems.slice(0, 4).map((item) => (
 						<CompactLine key={item.id} title={item.title} meta={item.deviceName} />
+					))}
+				</TodayPanel>
+				<TodayPanel title="오늘 스케줄" count={data?.schedules.length ?? 0} to="/schedule">
+					{data?.schedules.slice(0, 4).map((schedule) => (
+						<CompactLine
+							key={schedule.id}
+							title={schedule.title}
+							meta={`${formatTime(schedule.startAt)} - ${formatTime(schedule.endAt)}`}
+						/>
 					))}
 				</TodayPanel>
 				<TodayPanel title="AI 업무보고" count={data?.aiReports.length ?? 0} to="/ai-reports">
@@ -450,6 +470,140 @@ function HealthPage() {
 		</PageFrame>
 	);
 }
+
+function PersonalSchedulePage() {
+	const today = new Date();
+	const dateValue = today.toISOString().slice(0, 10);
+	const [title, setTitle] = useState("");
+	const [date, setDate] = useState(dateValue);
+	const [startTime, setStartTime] = useState("09:00");
+	const [endTime, setEndTime] = useState("10:00");
+	const [location, setLocation] = useState("");
+	const [note, setNote] = useState("");
+	const [isSaving, setIsSaving] = useState(false);
+	const schedules = useQuery({
+		queryKey: ["personal-schedules"],
+		queryFn: rpcClient.getPersonalSchedules,
+	});
+	const items = schedules.data ?? [];
+	const todayItems = items.filter((item) => item.startAt.slice(0, 10) === dateValue);
+	const upcoming = items.filter((item) => item.status === "planned");
+
+	const save = async () => {
+		if (!title.trim()) {
+			return;
+		}
+		setIsSaving(true);
+		try {
+			await rpcClient.createPersonalSchedule({
+				title: title.trim(),
+				startAt: new Date(`${date}T${startTime}:00`).toISOString(),
+				endAt: new Date(`${date}T${endTime}:00`).toISOString(),
+				location: location.trim() || undefined,
+				note: note.trim() || undefined,
+			});
+			setTitle("");
+			setLocation("");
+			setNote("");
+			await schedules.refetch();
+		} finally {
+			setIsSaving(false);
+		}
+	};
+
+	return (
+		<PageFrame title={text.schedule} eyebrow="개인 일정 관리">
+			<div className="schedule-shell">
+				<section className="schedule-compose">
+					<div>
+						<p className="app-eyebrow">빠른 추가</p>
+						<h2>일정을 바로 기록</h2>
+					</div>
+					<input
+						value={title}
+						onChange={(event) => setTitle(event.target.value)}
+						placeholder="예: 명승 정산 확인"
+					/>
+					<div className="schedule-form-grid">
+						<label>
+							<span>날짜</span>
+							<input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+						</label>
+						<label>
+							<span>시작</span>
+							<input type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} />
+						</label>
+						<label>
+							<span>종료</span>
+							<input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} />
+						</label>
+					</div>
+					<input
+						value={location}
+						onChange={(event) => setLocation(event.target.value)}
+						placeholder="장소 또는 관련 사이트"
+					/>
+					<textarea
+						value={note}
+						onChange={(event) => setNote(event.target.value)}
+						placeholder="메모"
+					/>
+					<button type="button" onClick={save} disabled={isSaving}>
+						{isSaving ? "저장 중" : "일정 저장"}
+					</button>
+				</section>
+				<section className="schedule-list-panel">
+					<div className="board-toolbar schedule-summary">
+						<div>
+							<strong>{todayItems.length}</strong>
+							<span>오늘</span>
+						</div>
+						<div>
+							<strong>{upcoming.length}</strong>
+							<span>예정</span>
+						</div>
+						<div>
+							<strong>{items.length}</strong>
+							<span>전체</span>
+						</div>
+					</div>
+					<div className="schedule-list">
+						{items.length ? (
+							items.map((item) => <ScheduleCard item={item} key={item.id} />)
+						) : (
+							<div className="direct-empty">아직 등록된 개인 일정이 없습니다.</div>
+						)}
+					</div>
+				</section>
+			</div>
+		</PageFrame>
+	);
+}
+
+function ScheduleCard({ item }: { item: PersonalSchedule }) {
+	return (
+		<article className="schedule-card" data-status={item.status}>
+			<div className="schedule-date-badge">
+				<strong>{new Date(item.startAt).getDate()}</strong>
+				<span>{new Date(item.startAt).toLocaleDateString(undefined, { month: "short" })}</span>
+			</div>
+			<div>
+				<p>
+					{formatTime(item.startAt)} - {formatTime(item.endAt)}
+				</p>
+				<h3>{item.title}</h3>
+				<span>{item.location ?? item.note ?? "메모 없음"}</span>
+			</div>
+			<small>{scheduleStatusLabel[item.status]}</small>
+		</article>
+	);
+}
+
+const scheduleStatusLabel: Record<PersonalSchedule["status"], string> = {
+	planned: "예정",
+	done: "완료",
+	cancelled: "취소",
+};
 
 function AiReportsPage() {
 	const reports = useQuery({
@@ -838,7 +992,7 @@ function TodayPanel({
 	count,
 	to,
 	children,
-}: PropsWithChildren<{ title: string; count: number; to: "/" | "/work" | "/ai-reports" | "/news" | "/health" }>) {
+}: PropsWithChildren<{ title: string; count: number; to: "/" | "/work" | "/ai-reports" | "/news" | "/health" | "/schedule" }>) {
 	return (
 		<section className="today-panel">
 			<div className="today-panel-header">
@@ -868,6 +1022,13 @@ function humanText(value: string) {
 	return value.replace(/\\u([0-9a-fA-F]{4})/g, (_, code: string) =>
 		String.fromCharCode(Number.parseInt(code, 16)),
 	);
+}
+
+function formatTime(value: string) {
+	return new Date(value).toLocaleTimeString(undefined, {
+		hour: "2-digit",
+		minute: "2-digit",
+	});
 }
 
 function EmptyBoard({ label }: { label: string }) {

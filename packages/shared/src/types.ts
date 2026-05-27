@@ -242,6 +242,33 @@ export type NewDailyLog = {
 	tags?: string[];
 };
 
+export type PersonalSchedule = {
+	id: string;
+	title: string;
+	startAt: ISODateTime;
+	endAt: ISODateTime;
+	status: "planned" | "done" | "cancelled";
+	location?: string;
+	note?: string;
+	tags?: string[];
+	createdAt: ISODateTime;
+	updatedAt: ISODateTime;
+};
+
+export type NewPersonalSchedule = {
+	title: string;
+	startAt: ISODateTime;
+	endAt: ISODateTime;
+	status?: "planned" | "done" | "cancelled";
+	location?: string;
+	note?: string;
+	tags?: string[];
+};
+
+export type PatchPersonalSchedule = Partial<
+	Pick<PersonalSchedule, "title" | "startAt" | "endAt" | "status" | "location" | "note" | "tags">
+>;
+
 export type HealthEntry = {
 	id: string;
 	entryDate: string;
@@ -309,6 +336,7 @@ export type TodaySnapshot = {
 	date: string;
 	dailyLog?: DailyLog;
 	healthEntry?: HealthEntry;
+	schedules: PersonalSchedule[];
 	openWorkItems: WorkItem[];
 	aiReports: AiReport[];
 	todayNews: WorkItem[];

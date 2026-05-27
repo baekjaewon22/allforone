@@ -5,6 +5,9 @@ import type {
 	NewAiReport,
 	NewDailyLog,
 	NewHealthEntry,
+	NewPersonalSchedule,
+	PatchPersonalSchedule,
+	PersonalSchedule,
 } from "@all-for-one/shared";
 
 type DailyLogRow = {
@@ -34,6 +37,19 @@ type HealthEntryRow = {
 	medication: string | null;
 	meal_note: string | null;
 	symptoms: string | null;
+	created_at: string;
+	updated_at: string;
+};
+
+type PersonalScheduleRow = {
+	id: string;
+	title: string;
+	start_at: string;
+	end_at: string;
+	status: PersonalSchedule["status"];
+	location: string | null;
+	note: string | null;
+	tags_json: string | null;
 	created_at: string;
 	updated_at: string;
 };
@@ -84,6 +100,19 @@ const toHealthEntry = (row: HealthEntryRow): HealthEntry => ({
 	medication: row.medication ?? undefined,
 	mealNote: row.meal_note ?? undefined,
 	symptoms: row.symptoms ?? undefined,
+	createdAt: row.created_at,
+	updatedAt: row.updated_at,
+});
+
+const toPersonalSchedule = (row: PersonalScheduleRow): PersonalSchedule => ({
+	id: row.id,
+	title: row.title,
+	startAt: row.start_at,
+	endAt: row.end_at,
+	status: row.status,
+	location: row.location ?? undefined,
+	note: row.note ?? undefined,
+	tags: parseStringArray(row.tags_json),
 	createdAt: row.created_at,
 	updatedAt: row.updated_at,
 });
@@ -262,6 +291,141 @@ export async function getHealthEntryByDate(
 		.first<HealthEntryRow>();
 
 	return row ? toHealthEntry(row) : undefined;
+}
+
+export async function listPersonalSchedules(
+	db: D1Database,
+	range?: { from?: string; to?: string },
+): Promise<PersonalSchedule[]> {
+	const from = range?.from ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+	const to = range?.to ?? new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString();
+	const result = await db
+		.prepare(`
+			SELECT id, title, start_at, end_at, status, location, note, tags_json,
+				created_at, updated_at
+			FROM personal_schedules
+			WHERE start_at <= ? AND end_at >= ?
+			ORDER BY start_at ASC
+			LIMIT 200
+		`)
+		.bind(to, from)
+		.all<PersonalScheduleRow>();
+
+	return (result.results ?? []).map(toPersonalSchedule);
+}
+
+export async function createPersonalSchedule(
+	db: D1Database,
+	input: NewPersonalSchedule,
+): Promise<PersonalSchedule> {
+	const now = new Date().toISOString();
+	const id = crypto.randomUUID();
+	const status = input.status ?? "planned";
+
+	await db
+		.prepare(`
+			INSERT INTO personal_schedules (
+				id, title, start_at, end_at, status, location, note, tags_json,
+				created_at, updated_at
+			)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`)
+		.bind(
+			id,
+			input.title,
+			input.startAt,
+			input.endAt,
+			status,
+			input.location ?? null,
+			input.note ?? null,
+			input.tags ? JSON.stringify(input.tags) : null,
+			now,
+			now,
+		)
+		.run();
+
+	return {
+		id,
+		title: input.title,
+		startAt: input.startAt,
+		endAt: input.endAt,
+		status,
+		location: input.location,
+		note: input.note,
+		tags: input.tags,
+		createdAt: now,
+		updatedAt: now,
+	};
+}
+
+export async function updatePersonalSchedule(
+	db: D1Database,
+	id: string,
+	patch: PatchPersonalSchedule,
+): Promise<PersonalSchedule | undefined> {
+	const current = await db
+		.prepare(`
+			SELECT id, title, start_at, end_at, status, location, note, tags_json,
+				created_at, updated_at
+			FROM personal_schedules
+			WHERE id = ?
+		`)
+		.bind(id)
+		.first<PersonalScheduleRow>();
+
+	if (!current) {
+		return undefined;
+	}
+
+	const next = {
+		title: patch.title ?? current.title,
+		startAt: patch.startAt ?? current.start_at,
+		endAt: patch.endAt ?? current.end_at,
+		status: patch.status ?? current.status,
+		location: patch.location ?? current.location ?? undefined,
+		note: patch.note ?? current.note ?? undefined,
+		tags: patch.tags ?? parseStringArray(current.tags_json),
+	};
+	const now = new Date().toISOString();
+
+	await db
+		.prepare(`
+			UPDATE personal_schedules
+			SET title = ?, start_at = ?, end_at = ?, status = ?, location = ?,
+				note = ?, tags_json = ?, updated_at = ?
+			WHERE id = ?
+		`)
+		.bind(
+			next.title,
+			next.startAt,
+			next.endAt,
+			next.status,
+			next.location ?? null,
+			next.note ?? null,
+			next.tags ? JSON.stringify(next.tags) : null,
+			now,
+			id,
+		)
+		.run();
+
+	return {
+		id,
+		...next,
+		createdAt: current.created_at,
+		updatedAt: now,
+	};
+}
+
+export async function deletePersonalSchedule(
+	db: D1Database,
+	id: string,
+): Promise<boolean> {
+	const result = await db
+		.prepare("DELETE FROM personal_schedules WHERE id = ?")
+		.bind(id)
+		.run();
+
+	return (result.meta.changes ?? 0) > 0;
 }
 
 export async function createAiReport(
