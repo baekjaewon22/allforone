@@ -1190,8 +1190,28 @@ body {
 	gap: 10px;
 }
 
+.llm-notice {
+	display: grid;
+	gap: 5px;
+	border: 1px solid rgba(37, 99, 235, 0.16);
+	border-radius: 12px;
+	padding: 13px 14px;
+	color: #1e3a8a;
+	background: #e8f0ff;
+}
+
+.llm-notice strong {
+	font-size: 14px;
+}
+
+.llm-notice span {
+	color: #334155;
+	font-size: 13px;
+	line-height: 1.45;
+}
+
 .provider-card {
-	min-height: 132px;
+	min-height: 156px;
 	border: 1px solid rgba(31, 45, 61, 0.1);
 	border-radius: 12px;
 	padding: 14px;

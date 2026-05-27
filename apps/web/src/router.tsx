@@ -533,6 +533,13 @@ function AiControlPage() {
 		<PageFrame title={text.aiControl} eyebrow="무료 우선 LLM Dispatcher">
 			<div className="llm-layout">
 				<section className="llm-compose">
+					<div className="llm-notice">
+						<strong>배포/모바일 실행 방식</strong>
+						<span>
+							Gemini와 OpenRouter는 Cloudflare Worker에서 호출하므로 핸드폰에서도 동작합니다.
+							Ollama Local만 내 PC 전용입니다.
+						</span>
+					</div>
 					<div className="llm-provider-grid">
 						{providers.data?.map((provider) => (
 							<ProviderCard
@@ -571,7 +578,7 @@ function AiControlPage() {
 				<section className="llm-history">
 					<div className="direct-section-title">
 						<h2>최근 실행</h2>
-						<span>API Key가 없어도 fallback 기록이 남습니다.</span>
+						<span>Gemini 실패 시 OpenRouter가 자동으로 대신 실행됩니다.</span>
 					</div>
 					<div className="compact-list">
 						{history.data?.length ? (
@@ -600,6 +607,7 @@ function ProviderCard({
 			<span>{provider.freeTier ? "무료 우선" : "유료"}</span>
 			<strong>{provider.name}</strong>
 			<small>{provider.model}</small>
+			<small>{provider.description}</small>
 			<em>{provider.status === "ready" ? "연결됨" : provider.status === "needs_key" ? "키 필요" : "준비중"}</em>
 		</button>
 	);

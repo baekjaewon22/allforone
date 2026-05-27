@@ -70,7 +70,7 @@ const fallbackProviders: LlmProvider[] = [
 		model: "llama3.2",
 		status: "disabled",
 		freeTier: true,
-		description: "로컬 PC LLM 연결용입니다.",
+		description: "로컬 PC에서만 동작합니다. 핸드폰/배포 사이트에서는 OpenRouter 또는 Gemini를 사용합니다.",
 	},
 ];
 

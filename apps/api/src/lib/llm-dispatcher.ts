@@ -14,6 +14,7 @@ export type LlmDispatchResult = {
 };
 
 const defaultGeminiModel = "gemini-2.5-flash";
+const defaultOpenRouterModel = "openrouter/free";
 
 export function listLlmProviders(env: Bindings): LlmProvider[] {
 	return [
@@ -28,7 +29,7 @@ export function listLlmProviders(env: Bindings): LlmProvider[] {
 		{
 			id: "openrouter",
 			name: "OpenRouter Free Models",
-			model: env.OPENROUTER_MODEL ?? "openrouter/free",
+			model: env.OPENROUTER_MODEL ?? defaultOpenRouterModel,
 			status: env.OPENROUTER_API_KEY ? "ready" : "needs_key",
 			freeTier: true,
 			description: "무료 모델 풀을 보조 provider로 사용할 수 있습니다.",
@@ -39,7 +40,7 @@ export function listLlmProviders(env: Bindings): LlmProvider[] {
 			model: env.OLLAMA_MODEL ?? "llama3.2",
 			status: env.OLLAMA_BASE_URL ? "local_only" : "disabled",
 			freeTier: true,
-			description: "내 PC에서 직접 돌리는 로컬 LLM입니다. 배포 환경에서는 별도 터널이 필요합니다.",
+			description: "로컬 PC에서만 동작하는 LLM입니다. 핸드폰/배포 환경에서는 OpenRouter 또는 Gemini를 사용합니다.",
 		},
 	];
 }
@@ -50,7 +51,24 @@ export async function dispatchLlm(
 ): Promise<LlmDispatchResult> {
 	const provider = input.provider ?? "gemini";
 	if (provider === "gemini") {
-		return callGemini(env, input);
+		const result = await callGemini(env, input);
+		if (result.status === "failed" && env.OPENROUTER_API_KEY) {
+			return callOpenRouter(env, {
+				...input,
+				provider: "openrouter",
+				context: {
+					...(input.context ?? {}),
+					fallbackFrom: "gemini",
+					fallbackReason: result.response,
+				},
+			});
+		}
+
+		return result;
+	}
+
+	if (provider === "openrouter") {
+		return callOpenRouter(env, input);
 	}
 
 	return {
@@ -58,6 +76,78 @@ export async function dispatchLlm(
 		model: input.model ?? provider,
 		status: "fallback",
 		response: `${provider} 연결은 준비되어 있지만 아직 API Key가 설정되지 않았습니다. 현재는 Gemini 무료 API를 1순위로 연결하는 단계입니다.`,
+	};
+}
+
+async function callOpenRouter(
+	env: Bindings,
+	input: NewLlmChat,
+): Promise<LlmDispatchResult> {
+	const model = input.model ?? env.OPENROUTER_MODEL ?? defaultOpenRouterModel;
+	if (!env.OPENROUTER_API_KEY) {
+		return {
+			provider: "openrouter",
+			model,
+			status: "fallback",
+			response:
+				"OpenRouter API Key가 아직 설정되지 않았습니다. `wrangler secret put OPENROUTER_API_KEY --config infra/wrangler.toml --env dev`로 저장하면 무료 모델을 호출합니다.",
+		};
+	}
+
+	const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+		method: "POST",
+		headers: {
+			"content-type": "application/json",
+			authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
+			"http-referer": "https://all-for-one-db9.pages.dev",
+			"x-title": "All For One",
+		},
+		body: JSON.stringify({
+			model,
+			messages: [
+				{
+					role: "system",
+					content:
+						"너는 All For One 개인 운영 대시보드 안의 업무 비서다. 한국어로 간결하고 실용적으로 답한다.",
+				},
+				{
+					role: "user",
+					content: buildPrompt(input),
+				},
+			],
+			temperature: input.intent === "command_preview" ? 0.2 : 0.5,
+			max_tokens: 1200,
+		}),
+	});
+	const body = (await response.json()) as {
+		choices?: Array<{ message?: { content?: string } }>;
+		usage?: {
+			prompt_tokens?: number;
+			completion_tokens?: number;
+			total_tokens?: number;
+		};
+		error?: { message?: string };
+	};
+
+	if (!response.ok) {
+		return {
+			provider: "openrouter",
+			model,
+			status: "failed",
+			response: body.error?.message ?? "OpenRouter API 호출에 실패했습니다.",
+		};
+	}
+
+	return {
+		provider: "openrouter",
+		model,
+		status: "completed",
+		response: body.choices?.[0]?.message?.content?.trim() || "응답 내용이 비어 있습니다.",
+		usage: {
+			inputTokens: body.usage?.prompt_tokens,
+			outputTokens: body.usage?.completion_tokens,
+			totalTokens: body.usage?.total_tokens,
+		},
 	};
 }
 
