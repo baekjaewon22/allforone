@@ -138,6 +138,40 @@ export type ManagedSiteDetail = {
 	capabilities: SiteCapability[];
 };
 
+export type SiteLiveReadStatus = "ready" | "partial" | "unavailable" | "pending";
+
+export type SiteLiveReadCard = {
+	id: string;
+	label: string;
+	endpointId: string;
+	path: string;
+	ok: boolean;
+	status: number;
+	count?: number;
+	preview: unknown[];
+	updatedAt: ISODateTime;
+	error?: string;
+};
+
+export type SiteLiveAction = {
+	id: string;
+	label: string;
+	phase: "write" | "admin";
+	enabled: boolean;
+	reason?: string;
+};
+
+export type SiteLiveOverview = {
+	siteId: string;
+	mode: "api" | "iframe";
+	status: SiteLiveReadStatus;
+	readCards: SiteLiveReadCard[];
+	today: SiteLiveReadCard[];
+	actions: SiteLiveAction[];
+	updatedAt: ISODateTime;
+	message?: string;
+};
+
 export type WorkDevice = {
 	id: string;
 	name: string;

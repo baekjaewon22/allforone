@@ -1,6 +1,7 @@
 import type {
 	ManagedSite,
 	ManagedSiteDetail,
+	SiteLiveOverview,
 	AiReport,
 	DailyLog,
 	HealthEntry,
@@ -42,6 +43,35 @@ export type PersonalTodaySnapshot = {
 	aiReports: AiReport[];
 	todayNews: WorkItem[];
 };
+
+const fallbackLiveOverview = (siteId: string): SiteLiveOverview => ({
+	siteId,
+	mode: siteId === "my-auction-docs" ? "api" : "iframe",
+	status: siteId === "my-auction-docs" ? "unavailable" : "pending",
+	readCards: [],
+	today: [],
+	actions: [
+		{
+			id: "memo-create",
+			label: "메모 추가",
+			phase: "write",
+			enabled: false,
+			reason: "write API 연결 대기",
+		},
+		{
+			id: "admin-settings",
+			label: "권한/토큰/설정 관리",
+			phase: "admin",
+			enabled: false,
+			reason: "admin API 연결 대기",
+		},
+	],
+	updatedAt: now,
+	message:
+		siteId === "my-auction-docs"
+			? "read Service Token 상태를 확인하는 중입니다."
+			: "원본 사이트에 Service Token API가 구현되면 직접 관리가 활성화됩니다.",
+});
 
 const now = new Date().toISOString();
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8787";
@@ -328,15 +358,38 @@ export const rpcClient = {
 	},
 	async getManagedSites(): Promise<ManagedSite[]> {
 		await delay();
-		return managedSiteDetails.map((detail) => detail.site);
+		try {
+			const response = await getJson<{ sites: ManagedSite[] }>("/sites");
+			return response.sites;
+		} catch {
+			return managedSiteDetails.map((detail) => detail.site);
+		}
 	},
 	async getManagedSiteDetail(siteId: string): Promise<ManagedSiteDetail> {
 		await delay();
-		const detail = managedSiteDetails.find((item) => item.site.id === siteId);
-		if (!detail) {
-			throw new Error(`Unknown managed site: ${siteId}`);
-		}
+		try {
+			const response = await getJson<ManagedSiteDetail & { ok: boolean }>(
+				`/sites/${siteId}`,
+			);
+			return response;
+		} catch {
+			const detail = managedSiteDetails.find((item) => item.site.id === siteId);
+			if (!detail) {
+				throw new Error(`Unknown managed site: ${siteId}`);
+			}
 
-		return detail;
+			return detail;
+		}
+	},
+	async getManagedSiteLiveOverview(siteId: string): Promise<SiteLiveOverview> {
+		await delay();
+		try {
+			const response = await getJson<{ overview: SiteLiveOverview }>(
+				`/sites/${siteId}/live/overview`,
+			);
+			return response.overview;
+		} catch {
+			return fallbackLiveOverview(siteId);
+		}
 	},
 };
