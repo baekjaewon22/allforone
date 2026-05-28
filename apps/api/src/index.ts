@@ -1,7 +1,10 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { authRoutes } from "./routes/auth";
+import { geoRoutes } from "./routes/geo";
+import { healthConnectRoutes } from "./routes/health-connect";
 import { llmRoutes } from "./routes/llm";
+import { memoRoutes } from "./routes/memos";
 import { personalRoutes } from "./routes/personal";
 import { reportRoutes } from "./routes/report";
 import { siteRoutes } from "./routes/sites";
@@ -10,6 +13,7 @@ import { syncRoutes } from "./routes/sync";
 import { TODAY_NEWS_CATEGORY, TODAY_NEWS_RETENTION_DAYS, workRoutes } from "./routes/work";
 import { wsRoutes } from "./routes/ws";
 import { deleteExpiredWorkItemsByCategory } from "./repositories/work-intake";
+import { sendDailySlackDigestIfDue } from "./lib/slack-daily-digest";
 
 export type Bindings = {
 	DB: D1Database;
@@ -30,6 +34,7 @@ export type Bindings = {
 	OPENROUTER_MODEL?: string;
 	OLLAMA_BASE_URL?: string;
 	OLLAMA_MODEL?: string;
+	SLACK_WEBHOOK_URL?: string;
 	ENVIRONMENT?: "dev" | "preview" | "prod";
 };
 
@@ -61,7 +66,10 @@ export const app = new Hono<AppEnv>()
 	.route("/schedule", scheduleRoutes)
 	.route("/report", reportRoutes)
 	.route("/personal", personalRoutes)
+	.route("/geo", geoRoutes)
+	.route("/health-connect", healthConnectRoutes)
 	.route("/llm", llmRoutes)
+	.route("/memos", memoRoutes)
 	.route("/sites", siteRoutes)
 	.route("/work", workRoutes)
 	.route("/ws", wsRoutes);
@@ -72,11 +80,14 @@ export { DashboardRoom } from "./durable-objects/dashboard-room";
 
 export default {
 	fetch: app.fetch,
-	async scheduled(_event, env) {
+	async scheduled(event, env) {
 		const cutoff = new Date(
 			Date.now() - TODAY_NEWS_RETENTION_DAYS * 24 * 60 * 60 * 1000,
 		).toISOString();
 
-		await deleteExpiredWorkItemsByCategory(env.DB, TODAY_NEWS_CATEGORY, cutoff);
+		await Promise.all([
+			deleteExpiredWorkItemsByCategory(env.DB, TODAY_NEWS_CATEGORY, cutoff),
+			sendDailySlackDigestIfDue(env, event.scheduledTime),
+		]);
 	},
 } satisfies ExportedHandler<Bindings>;

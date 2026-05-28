@@ -44,6 +44,19 @@ function stripInlineFile<T extends { metadata?: Record<string, unknown> }>(
 	};
 }
 
+function isTodayNewsItem(item: {
+	deviceId?: string;
+	deviceName?: string;
+	metadata?: Record<string, unknown>;
+}) {
+	return (
+		item.metadata?.category === TODAY_NEWS_CATEGORY ||
+		item.deviceId === "today-news" ||
+		item.deviceName === "오늘의 뉴스" ||
+		item.deviceName === "?ㅻ뒛???댁뒪"
+	);
+}
+
 function isAuthorized(c: { req: Request; env: AppEnv["Bindings"] }) {
 	const expected = c.env.AFO_DEVICE_INGEST_KEY;
 
@@ -67,7 +80,10 @@ export const workRoutes = new Hono<AppEnv>()
 	})
 	.get("/items", async (c) => {
 		const items = await listWorkItems(c.env.DB);
-		return c.json({ ok: true, items: items.map(stripInlineFile) });
+		return c.json({
+			ok: true,
+			items: items.filter((item) => !isTodayNewsItem(item)).map(stripInlineFile),
+		});
 	})
 	.get("/news/today", async (c) => {
 		const items = await listWorkItemsByCategory(c.env.DB, TODAY_NEWS_CATEGORY);

@@ -330,6 +330,73 @@ export const newHealthEntrySchema = healthEntrySchema.omit({
 	updatedAt: true,
 });
 
+export const healthConnectDailySummarySchema = z.object({
+	date: dateOnlySchema,
+	deviceId: z.string().min(1),
+	steps: z.number().int().min(0).optional(),
+	sleepMinutes: z.number().int().min(0).max(1440).optional(),
+	exerciseMinutes: z.number().int().min(0).max(1440).optional(),
+	activeCalories: z.number().min(0).optional(),
+	totalCalories: z.number().min(0).optional(),
+	distanceMeters: z.number().min(0).optional(),
+	heartRateAvg: z.number().min(0).optional(),
+	heartRateMin: z.number().min(0).optional(),
+	heartRateMax: z.number().min(0).optional(),
+	weightKg: z.number().min(0).max(500).optional(),
+	source: z.string().optional(),
+	raw: z.record(z.string(), z.unknown()).optional(),
+	syncedAt: isoDateTimeSchema,
+	createdAt: isoDateTimeSchema,
+	updatedAt: isoDateTimeSchema,
+});
+
+export const newHealthConnectDailySummarySchema = healthConnectDailySummarySchema.omit({
+	createdAt: true,
+	updatedAt: true,
+});
+
+export const healthConnectSyncSchema = z.object({
+	deviceId: z.string().min(1),
+	lastSyncedAt: isoDateTimeSchema.optional(),
+	summaries: z.array(newHealthConnectDailySummarySchema).min(1).max(31),
+});
+
+export const healthConnectSyncStateSchema = z.object({
+	deviceId: z.string().min(1),
+	lastSyncedAt: isoDateTimeSchema,
+	lastStatus: z.enum(["ok", "error"]),
+	errorMessage: z.string().optional(),
+	createdAt: isoDateTimeSchema,
+	updatedAt: isoDateTimeSchema,
+});
+
+export const memoSchema = z.object({
+	id: z.string().min(1),
+	title: z.string().min(1),
+	content: z.string().optional(),
+	fileName: z.string().optional(),
+	mimeType: z.string().optional(),
+	fileBase64: z.string().optional(),
+	ocrText: z.string().optional(),
+	ocrStatus: z.enum(["none", "pending", "completed", "failed"]),
+	summary: z.string().optional(),
+	tags: z.array(z.string().min(1)).optional(),
+	createdAt: isoDateTimeSchema,
+	updatedAt: isoDateTimeSchema,
+});
+
+export const newMemoSchema = memoSchema
+	.omit({
+		id: true,
+		ocrStatus: true,
+		summary: true,
+		createdAt: true,
+		updatedAt: true,
+	})
+	.extend({
+		ocrText: z.string().optional(),
+	});
+
 export const aiReportStatusSchema = z.enum([
 	"received",
 	"needs_review",

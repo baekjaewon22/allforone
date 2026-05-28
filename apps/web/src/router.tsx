@@ -1,5 +1,5 @@
 ﻿import { enabledConnectors } from "@all-for-one/connectors";
-import type { AiReport, DailyLog, HealthEntry, LlmProvider, LlmProviderId, LlmRun, PersonalSchedule, WorkItem } from "@all-for-one/shared";
+import type { AiReport, DailyLog, HealthConnectDailySummary, HealthEntry, LlmProvider, LlmProviderId, LlmRun, Memo, PersonalSchedule, WorkItem } from "@all-for-one/shared";
 import { useQuery } from "@tanstack/react-query";
 import {
 	createRootRoute,
@@ -15,7 +15,10 @@ import {
 	BrainCircuit,
 	Cable,
 	CalendarDays,
+	ChevronLeft,
+	ChevronRight,
 	Download,
+	FileText,
 	Globe2,
 	HeartPulse,
 	Inbox,
@@ -27,11 +30,13 @@ import {
 	Newspaper,
 	NotebookPen,
 	Settings,
+	Volume2,
+	VolumeX,
 } from "lucide-react";
 import { useEffect, useState, type PropsWithChildren, type ReactNode } from "react";
 import { clearAuthSession, getAuthSession, useAuthGuard } from "./auth";
 import { rpcClient } from "./lib/rpcClient";
-import { useSpeechInput } from "./lib/speech";
+import { useSpeechInput, useSpeechOutput } from "./lib/speech";
 import { LoginPage } from "./screens/LoginPage";
 import { SiteDetailPage, SitesPage } from "./screens/SitesPage";
 
@@ -42,7 +47,8 @@ const text = {
 	health: "건강",
 	schedule: "스케줄",
 	aiReports: "AI 업무보고",
-	aiControl: "AI 관제실",
+	aiControl: "컨트롤 타워",
+	memos: "메모",
 	connectors: "연동 관리",
 	sites: "관리 사이트",
 	work: "작업함",
@@ -101,6 +107,12 @@ const appRoute = createRoute({
 const indexRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/",
+	component: AiControlPage,
+});
+
+const todayRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/today",
 	component: TodayPage,
 });
 
@@ -138,6 +150,12 @@ const aiControlRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/ai-control",
 	component: AiControlPage,
+});
+
+const memosRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/memos",
+	component: MemosPage,
 });
 
 const connectorsRoute = createRoute({
@@ -180,12 +198,14 @@ const routeTree = rootRoute.addChildren([
 	loginRoute,
 	appRoute.addChildren([
 		indexRoute,
+		todayRoute,
 		dashboardRoute,
 		lifeRoute,
 		healthRoute,
 		personalScheduleRoute,
 		aiReportsRoute,
 		aiControlRoute,
+		memosRoute,
 		connectorsRoute,
 		sitesRoute,
 		siteDetailRoute,
@@ -218,12 +238,13 @@ function AppShell() {
 					<span>All For One</span>
 				</div>
 				<nav className="nav-list" aria-label="주요 메뉴">
-					<NavLink to="/" icon={<LayoutDashboard size={18} />} label={text.today} />
+					<NavLink to="/" icon={<BrainCircuit size={18} />} label={text.aiControl} />
+					<NavLink to="/today" icon={<LayoutDashboard size={18} />} label={text.today} />
 					<NavLink to="/life" icon={<NotebookPen size={18} />} label={text.life} />
 					<NavLink to="/health" icon={<HeartPulse size={18} />} label={text.health} />
 					<NavLink to="/schedule" icon={<CalendarDays size={18} />} label={text.schedule} />
-					<NavLink to="/ai-control" icon={<BrainCircuit size={18} />} label={text.aiControl} />
 					<NavLink to="/ai-reports" icon={<Bot size={18} />} label={text.aiReports} />
+					<NavLink to="/memos" icon={<FileText size={18} />} label={text.memos} />
 					<NavLink to="/connectors" icon={<Cable size={18} />} label={text.connectors} />
 					<NavLink to="/sites" icon={<Globe2 size={18} />} label={text.sites} />
 					<NavLink to="/work" icon={<Inbox size={18} />} label={text.work} />
@@ -246,9 +267,36 @@ function AppShell() {
 				</div>
 			</aside>
 			<main className="workspace">
+				<MobileAccountBar email={session?.email ?? text.localUser} />
 				<Outlet />
 			</main>
 			<InstallAppButton />
+		</div>
+	);
+}
+
+function MobileAccountBar({ email }: { email: string }) {
+	return (
+		<div className="mobile-account-bar">
+			<div>
+				<strong>All For One</strong>
+				<span>{email}</span>
+			</div>
+			<div className="mobile-account-actions">
+				<Link to="/settings" aria-label="설정">
+					<Settings aria-hidden="true" size={17} />
+				</Link>
+				<button
+					type="button"
+					aria-label={text.logout}
+					onClick={() => {
+						clearAuthSession();
+						globalThis.location.assign("/login");
+					}}
+				>
+					<LogOut aria-hidden="true" size={17} />
+				</button>
+			</div>
 		</div>
 	);
 }
@@ -317,12 +365,14 @@ function NavLink({
 }: {
 	to:
 		| "/"
+		| "/today"
 		| "/dashboard"
 		| "/life"
 		| "/health"
 		| "/schedule"
 		| "/ai-control"
 		| "/ai-reports"
+		| "/memos"
 		| "/connectors"
 		| "/sites"
 		| "/work"
@@ -350,6 +400,12 @@ function TodayPage() {
 		queryFn: rpcClient.getPersonalToday,
 	});
 	const data = today.data;
+	const sleepHours =
+		data?.healthEntry?.sleepHours ??
+		data?.dailyLog?.sleepHours ??
+		(typeof data?.healthConnectSummary?.sleepMinutes === "number"
+			? Math.round((data.healthConnectSummary.sleepMinutes / 60) * 10) / 10
+			: undefined);
 
 	return (
 		<PageFrame title={text.today} eyebrow="개인 운영 센터">
@@ -364,7 +420,7 @@ function TodayPage() {
 				</div>
 				<div className="today-score-grid">
 					<ScoreCard label="컨디션" value={data?.healthEntry?.condition ?? data?.dailyLog?.condition} suffix="/10" />
-					<ScoreCard label="수면" value={data?.healthEntry?.sleepHours ?? data?.dailyLog?.sleepHours} suffix="시간" />
+					<ScoreCard label="수면" value={sleepHours} suffix="시간" />
 					<ScoreCard label="집중" value={data?.dailyLog?.focus} suffix="/10" />
 				</div>
 			</div>
@@ -394,10 +450,7 @@ function TodayPage() {
 					))}
 				</TodayPanel>
 				<TodayPanel title="건강" count={data?.healthEntry ? 1 : 0} to="/health">
-					<CompactLine
-						title={data?.healthEntry?.symptoms ?? "오늘 건강 기록"}
-						meta={`스트레스 ${data?.healthEntry?.stress ?? "-"} / 운동 ${data?.healthEntry?.exerciseMinutes ?? 0}분`}
-					/>
+					<HealthCompactLine health={data?.healthEntry} summary={data?.healthConnectSummary} />
 				</TodayPanel>
 			</div>
 		</PageFrame>
@@ -536,11 +589,16 @@ function HealthPage() {
 
 function PersonalSchedulePage() {
 	const today = new Date();
-	const dateValue = today.toISOString().slice(0, 10);
+	const dateValue = toLocalDateInputValue(today);
 	const [title, setTitle] = useState("");
 	const [date, setDate] = useState(dateValue);
 	const [startTime, setStartTime] = useState("09:00");
-	const [endTime, setEndTime] = useState("10:00");
+	const [fixedSchedule, setFixedSchedule] = useState(false);
+	const [repeatType, setRepeatType] = useState<"daily" | "weekly" | "monthly">("weekly");
+	const [repeatCount, setRepeatCount] = useState(4);
+	const [calendarMonth, setCalendarMonth] = useState(
+		() => new Date(today.getFullYear(), today.getMonth(), 1),
+	);
 	const [location, setLocation] = useState("");
 	const [note, setNote] = useState("");
 	const [isSaving, setIsSaving] = useState(false);
@@ -556,7 +614,10 @@ function PersonalSchedulePage() {
 	});
 	const items = schedules.data ?? [];
 	const todayItems = items.filter((item) => item.startAt.slice(0, 10) === dateValue);
-	const upcoming = items.filter((item) => item.status === "planned");
+	const fixedItems = items.filter(isFixedSchedule);
+	const oneTimeItems = items.filter((item) => !isFixedSchedule(item));
+	const calendarDays = buildScheduleCalendar(calendarMonth, items);
+	const selectedDateItems = items.filter((item) => item.startAt.slice(0, 10) === date);
 
 	const save = async () => {
 		if (!title.trim()) {
@@ -564,13 +625,23 @@ function PersonalSchedulePage() {
 		}
 		setIsSaving(true);
 		try {
-			await rpcClient.createPersonalSchedule({
-				title: title.trim(),
-				startAt: new Date(`${date}T${startTime}:00`).toISOString(),
-				endAt: new Date(`${date}T${endTime}:00`).toISOString(),
-				location: location.trim() || undefined,
-				note: note.trim() || undefined,
-			});
+			const startAt = new Date(`${date}T${startTime}:00`);
+			const occurrences = fixedSchedule
+				? createFixedScheduleStarts(startAt, repeatType, repeatCount)
+				: [startAt];
+			await Promise.all(
+				occurrences.map((occurrence) => {
+					const endAt = new Date(occurrence.getTime() + 30 * 60 * 1000);
+					return rpcClient.createPersonalSchedule({
+						title: title.trim(),
+						startAt: occurrence.toISOString(),
+						endAt: endAt.toISOString(),
+						location: location.trim() || undefined,
+						note: note.trim() || undefined,
+						tags: fixedSchedule ? ["fixed", `repeat:${repeatType}`] : undefined,
+					});
+				}),
+			);
 			setTitle("");
 			setLocation("");
 			setNote("");
@@ -605,10 +676,52 @@ function PersonalSchedulePage() {
 							<span>시작</span>
 							<input type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} />
 						</label>
-						<label>
-							<span>종료</span>
-							<input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} />
-						</label>
+					</div>
+					<div className="schedule-kind-picker" aria-label="스케줄 유형">
+						<button
+							type="button"
+							aria-pressed={!fixedSchedule}
+							onClick={() => setFixedSchedule(false)}
+						>
+							<span>추가 스케줄</span>
+							<small>한 번만 등록</small>
+						</button>
+						<button
+							type="button"
+							aria-pressed={fixedSchedule}
+							onClick={() => setFixedSchedule(true)}
+						>
+							<span>고정 스케줄</span>
+							<small>반복 자동 등록</small>
+						</button>
+					</div>
+					<div className="fixed-schedule-fields" data-active={fixedSchedule}>
+						<div className="schedule-form-grid">
+							<label>
+								<span>반복</span>
+								<select
+									value={repeatType}
+									onChange={(event) =>
+										setRepeatType(event.target.value as "daily" | "weekly" | "monthly")
+									}
+								>
+									<option value="daily">매일</option>
+									<option value="weekly">매주</option>
+									<option value="monthly">매월</option>
+								</select>
+							</label>
+							<label>
+								<span>횟수</span>
+								<input
+									type="number"
+									min={2}
+									max={52}
+									value={repeatCount}
+									onChange={(event) => setRepeatCount(Number(event.target.value))}
+								/>
+							</label>
+						</div>
+						<p>고정 스케줄은 달력과 목록에서 녹색으로 표시됩니다.</p>
 					</div>
 					<input
 						value={location}
@@ -634,14 +747,82 @@ function PersonalSchedulePage() {
 							<span>오늘</span>
 						</div>
 						<div>
-							<strong>{upcoming.length}</strong>
-							<span>예정</span>
+							<strong>{oneTimeItems.length}</strong>
+							<span>추가</span>
+						</div>
+						<div>
+							<strong>{fixedItems.length}</strong>
+							<span>고정</span>
 						</div>
 						<div>
 							<strong>{items.length}</strong>
 							<span>전체</span>
 						</div>
 					</div>
+					<section className="schedule-calendar-panel" aria-label="월간 스케줄 달력">
+						<div className="calendar-head">
+							<div>
+								<p>월간 보기</p>
+								<strong>{formatCalendarMonth(calendarMonth)}</strong>
+							</div>
+							<div>
+								<button
+									type="button"
+									aria-label="이전 달"
+									onClick={() => setCalendarMonth((month) => addCalendarMonths(month, -1))}
+								>
+									<ChevronLeft aria-hidden="true" size={17} />
+								</button>
+								<button
+									type="button"
+									aria-label="다음 달"
+									onClick={() => setCalendarMonth((month) => addCalendarMonths(month, 1))}
+								>
+									<ChevronRight aria-hidden="true" size={17} />
+								</button>
+							</div>
+						</div>
+						<div className="calendar-weekdays" aria-hidden="true">
+							<span>일</span>
+							<span>월</span>
+							<span>화</span>
+							<span>수</span>
+							<span>목</span>
+							<span>금</span>
+							<span>토</span>
+						</div>
+						<div className="calendar-grid">
+							{calendarDays.map((day) => (
+								<button
+									type="button"
+									key={day.iso}
+									className="calendar-day"
+									data-current-month={day.isCurrentMonth}
+									data-selected={day.iso === date}
+									data-today={day.iso === dateValue}
+									onClick={() => setDate(day.iso)}
+								>
+									<strong>{day.date.getDate()}</strong>
+									<div>
+										{day.fixedCount ? <span className="calendar-dot fixed" /> : null}
+										{day.oneTimeCount ? <span className="calendar-dot one-time" /> : null}
+									</div>
+									{day.total ? <small>{day.total}</small> : null}
+								</button>
+							))}
+						</div>
+						<div className="schedule-legend">
+							<span><i data-kind="fixed" />고정 스케줄</span>
+							<span><i data-kind="one-time" />추가 스케줄</span>
+						</div>
+					</section>
+					<section className="selected-schedule-strip">
+						<div>
+							<p>선택 날짜</p>
+							<strong>{date}</strong>
+						</div>
+						<span>{selectedDateItems.length}건</span>
+					</section>
 					<div className="schedule-list">
 						{items.length ? (
 							items.map((item) => <ScheduleCard item={item} key={item.id} />)
@@ -656,22 +837,85 @@ function PersonalSchedulePage() {
 }
 
 function ScheduleCard({ item }: { item: PersonalSchedule }) {
+	const isFixed = isFixedSchedule(item);
 	return (
-		<article className="schedule-card" data-status={item.status}>
+		<article className="schedule-card" data-kind={isFixed ? "fixed" : "one-time"} data-status={item.status}>
 			<div className="schedule-date-badge">
 				<strong>{new Date(item.startAt).getDate()}</strong>
 				<span>{new Date(item.startAt).toLocaleDateString(undefined, { month: "short" })}</span>
 			</div>
 			<div>
-				<p>
-					{formatTime(item.startAt)} - {formatTime(item.endAt)}
-				</p>
+				<p>{formatTime(item.startAt)}</p>
 				<h3>{item.title}</h3>
 				<span>{item.location ?? item.note ?? "메모 없음"}</span>
 			</div>
-			<small>{scheduleStatusLabel[item.status]}</small>
+			<small>{isFixed ? "고정" : "추가"}</small>
 		</article>
 	);
+}
+
+function isFixedSchedule(item: PersonalSchedule) {
+	return item.tags?.some((tag) => tag === "fixed") ?? false;
+}
+
+function createFixedScheduleStarts(
+	startAt: Date,
+	repeatType: "daily" | "weekly" | "monthly",
+	count: number,
+) {
+	const safeCount = Math.min(Math.max(Math.trunc(count) || 2, 2), 52);
+	return Array.from({ length: safeCount }, (_, index) => {
+		const next = new Date(startAt);
+		if (repeatType === "daily") {
+			next.setDate(startAt.getDate() + index);
+		}
+		if (repeatType === "weekly") {
+			next.setDate(startAt.getDate() + index * 7);
+		}
+		if (repeatType === "monthly") {
+			next.setMonth(startAt.getMonth() + index);
+		}
+		return next;
+	});
+}
+
+function buildScheduleCalendar(month: Date, items: PersonalSchedule[]) {
+	const firstDay = new Date(month.getFullYear(), month.getMonth(), 1);
+	const gridStart = new Date(firstDay);
+	gridStart.setDate(firstDay.getDate() - firstDay.getDay());
+
+	return Array.from({ length: 42 }, (_, index) => {
+		const date = new Date(gridStart);
+		date.setDate(gridStart.getDate() + index);
+		const iso = toLocalDateInputValue(date);
+		const dayItems = items.filter((item) => item.startAt.slice(0, 10) === iso);
+		const fixedCount = dayItems.filter(isFixedSchedule).length;
+		const oneTimeCount = dayItems.length - fixedCount;
+
+		return {
+			date,
+			fixedCount,
+			isCurrentMonth: date.getMonth() === month.getMonth(),
+			iso,
+			oneTimeCount,
+			total: dayItems.length,
+		};
+	});
+}
+
+function addCalendarMonths(month: Date, amount: number) {
+	return new Date(month.getFullYear(), month.getMonth() + amount, 1);
+}
+
+function formatCalendarMonth(month: Date) {
+	return month.toLocaleDateString("ko-KR", { year: "numeric", month: "long" });
+}
+
+function toLocalDateInputValue(date: Date) {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
 }
 
 const scheduleStatusLabel: Record<PersonalSchedule["status"], string> = {
@@ -724,14 +968,18 @@ function AiControlPage() {
 	const [mode, setMode] = useState<"chat" | "summarize" | "command_preview">("chat");
 	const [selectedProvider, setSelectedProvider] = useState<LlmProviderId>("gemini");
 	const [showHistory, setShowHistory] = useState(false);
-	const [locationContext, setLocationContext] = useState(() =>
-		typeof window === "undefined" ? "" : (window.localStorage.getItem("afo-location-context") ?? ""),
+	const [locationRegion, setLocationRegion] = useState(() =>
+		typeof window === "undefined" ? "" : (window.localStorage.getItem("afo-location-region") ?? ""),
 	);
+	const [locationStatus, setLocationStatus] = useState("");
 	const [lastRun, setLastRun] = useState<LlmRun>();
 	const [isRunning, setIsRunning] = useState(false);
-	const messageSpeech = useSpeechInput((text) =>
-		setMessage((current) => [current, text].filter(Boolean).join("\n")),
-	);
+	const [voiceReplyEnabled, setVoiceReplyEnabled] = useState(true);
+	const speechOutput = useSpeechOutput();
+	const messageSpeech = useSpeechInput((text) => {
+		setVoiceReplyEnabled(true);
+		setMessage((current) => [current, text].filter(Boolean).join("\n"));
+	});
 	const providers = useQuery({
 		queryKey: ["llm-providers"],
 		queryFn: rpcClient.getLlmProviders,
@@ -751,13 +999,15 @@ function AiControlPage() {
 				provider: selectedProvider,
 				message: message.trim(),
 				intent: mode,
-				context: locationContext.trim()
+				context: locationRegion.trim()
 					? {
-							location: locationContext.trim(),
+							region: locationRegion.trim(),
 							timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+							availableActions: controlTowerActions,
 						}
 					: {
 							timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+							availableActions: controlTowerActions,
 						},
 			};
 			const result =
@@ -767,47 +1017,108 @@ function AiControlPage() {
 						? await rpcClient.runLlmCommandPreview(input)
 						: await rpcClient.runLlmChat(input);
 			setLastRun(result);
+			if (voiceReplyEnabled) {
+				speechOutput.speak(result.response);
+			}
 			await history.refetch();
 		} finally {
 			setIsRunning(false);
 		}
 	};
 
-	const updateLocationContext = (value: string) => {
-		setLocationContext(value);
-		window.localStorage.setItem("afo-location-context", value);
+	const updateLocationRegion = (value: string) => {
+		setLocationRegion(value);
+		window.localStorage.setItem("afo-location-region", value);
 	};
 
 	const detectLocation = () => {
 		if (!navigator.geolocation) {
-			updateLocationContext("브라우저 위치 권한을 지원하지 않습니다. 예: 서울 강남구처럼 직접 입력하세요.");
+			setLocationStatus("브라우저 위치 권한을 지원하지 않습니다.");
 			return;
 		}
 
+		setLocationStatus("현재 위치 확인 중");
 		navigator.geolocation.getCurrentPosition(
-			(position) => {
+			async (position) => {
 				const { latitude, longitude } = position.coords;
-				updateLocationContext(`위도 ${latitude.toFixed(5)}, 경도 ${longitude.toFixed(5)}`);
+				try {
+					setLocationStatus("지역 확인 중");
+					const result = await rpcClient.reverseGeocode(latitude, longitude);
+					updateLocationRegion(result.region || result.displayName || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+					setLocationStatus("GPS 기반 위치 적용됨");
+				} catch {
+					updateLocationRegion(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+					setLocationStatus("지역 변환 실패, 좌표만 저장됨");
+				}
 			},
 			() => {
-				updateLocationContext("위치 권한이 거부되었습니다. 예: 서울 강남구처럼 직접 입력하세요.");
+				setLocationStatus("위치 권한이 거부되었습니다.");
 			},
 			{ enableHighAccuracy: false, maximumAge: 10 * 60 * 1000, timeout: 8000 },
 		);
 	};
 
 	return (
-		<PageFrame title={text.aiControl} eyebrow="무료 우선 LLM Dispatcher">
-			<div className="llm-layout llm-layout-focused">
-				<section className="llm-compose">
+		<PageFrame title={text.aiControl} eyebrow="All For One">
+			<div className="control-tower">
+				<section className="control-search-panel">
 					<div className="llm-ambient" aria-hidden="true" />
-					<div className="llm-notice">
-						<strong>AI 실행 콘솔</strong>
-						<span>
-							질문, 요약, 명령 초안을 한 곳에서 실행합니다. Gemini 실패 시 OpenRouter가 자동으로 대신 응답합니다.
-						</span>
+					<div className="control-search-head">
+						<strong>무엇을 처리할까요?</strong>
+						<span>검색하듯 요청하면 연결된 기능과 데이터를 기준으로 처리합니다.</span>
 					</div>
-					<div className="llm-provider-grid">
+					<div className="control-searchbar voice-field voice-field-textarea">
+						<textarea
+							value={message}
+							onChange={(event) => setMessage(event.target.value)}
+							onKeyDown={(event) => {
+								if (event.key === "Enter" && !event.shiftKey) {
+									event.preventDefault();
+									void run();
+								}
+							}}
+							placeholder="예: 오늘 날씨 기준으로 일정 정리해줘 / 뉴스 PDF 요약해줘 / 명승 리드 확인해줘"
+						/>
+						<div className="control-input-actions">
+							<SpeechButton label="AI 관제실 음성입력" speech={messageSpeech} />
+							<button className="llm-run-button" type="button" disabled={isRunning} onClick={run}>
+								{isRunning ? "처리 중" : "실행"}
+							</button>
+						</div>
+					</div>
+					<div className="control-options">
+						<div className="control-region">
+							<span>지역</span>
+							<div className="control-region-field">
+								<input
+									value={locationRegion}
+									onChange={(event) => updateLocationRegion(event.target.value)}
+									placeholder="GPS로 자동 설정"
+								/>
+								<button type="button" onClick={detectLocation}>
+									<MapPin aria-hidden="true" size={15} />
+									GPS
+								</button>
+							</div>
+							{locationStatus ? <small>{locationStatus}</small> : null}
+						</div>
+						<div className="llm-mode-tabs">
+							<button type="button" aria-pressed={mode === "chat"} onClick={() => setMode("chat")}>
+								대화
+							</button>
+							<button type="button" aria-pressed={mode === "summarize"} onClick={() => setMode("summarize")}>
+								요약
+							</button>
+							<button
+								type="button"
+								aria-pressed={mode === "command_preview"}
+								onClick={() => setMode("command_preview")}
+							>
+								명령
+							</button>
+						</div>
+					</div>
+					<div className="control-model-strip">
 						{providers.data?.map((provider) => (
 							<ProviderCard
 								key={provider.id}
@@ -817,53 +1128,36 @@ function AiControlPage() {
 							/>
 						))}
 					</div>
-					<div className="llm-mode-tabs">
-						<button type="button" aria-pressed={mode === "chat"} onClick={() => setMode("chat")}>
-							대화
-						</button>
-						<button type="button" aria-pressed={mode === "summarize"} onClick={() => setMode("summarize")}>
-							요약
-						</button>
+					<div className="control-actions">
 						<button
 							type="button"
-							aria-pressed={mode === "command_preview"}
-							onClick={() => setMode("command_preview")}
+							aria-pressed={voiceReplyEnabled}
+							disabled={!speechOutput.isSupported}
+							onClick={() => {
+								if (speechOutput.isSpeaking) {
+									speechOutput.stop();
+								}
+								setVoiceReplyEnabled((value) => !value);
+							}}
+							title={speechOutput.isSupported ? "AI 답변을 음성으로 읽습니다." : "이 브라우저는 음성 답변을 지원하지 않습니다."}
 						>
-							명령 초안
+							{voiceReplyEnabled ? <Volume2 aria-hidden="true" size={16} /> : <VolumeX aria-hidden="true" size={16} />}
+							{voiceReplyEnabled ? "음성 답변" : "음성 꺼짐"}
 						</button>
-					</div>
-					<div className="llm-location-row">
-						<div>
-							<label htmlFor="llm-location">위치 컨텍스트</label>
-							<input
-								id="llm-location"
-								value={locationContext}
-								onChange={(event) => updateLocationContext(event.target.value)}
-								placeholder="예: 서울 강남구 또는 위도/경도"
-							/>
-						</div>
-						<button type="button" onClick={detectLocation}>
-							<MapPin aria-hidden="true" size={16} />
-							현재 위치
-						</button>
-					</div>
-					<div className="voice-field voice-field-textarea">
-						<textarea
-							value={message}
-							onChange={(event) => setMessage(event.target.value)}
-							placeholder="예: 오늘 받은 작업보고와 뉴스 PDF를 짧게 요약해줘."
-						/>
-						<SpeechButton label="AI 관제실 음성입력" speech={messageSpeech} />
-					</div>
-					<button className="llm-run-button" type="button" disabled={isRunning} onClick={run}>
-						{isRunning ? "실행 중" : "실행"}
-					</button>
-					{lastRun ? <LlmRunCard run={lastRun} featured /> : null}
-					<div className="llm-history-toggle">
 						<button type="button" onClick={() => setShowHistory((value) => !value)}>
-							{showHistory ? "최근 질문 닫기" : "최근 질문 불러오기"}
+							{showHistory ? "닫기" : "최근 질문"}
 						</button>
 					</div>
+					{lastRun ? (
+						<LlmRunCard
+							run={lastRun}
+							featured
+							isSpeaking={speechOutput.isSpeaking}
+							onSpeak={() => speechOutput.speak(lastRun.response)}
+							onStop={speechOutput.stop}
+							speechSupported={speechOutput.isSupported}
+						/>
+					) : null}
 					{showHistory ? (
 						<section className="llm-history-drawer">
 							{history.data?.length ? (
@@ -889,6 +1183,15 @@ function AiControlPage() {
 	);
 }
 
+const controlTowerActions = [
+	"관리 사이트 read API 조회",
+	"메모 요약",
+	"오늘/스케줄/건강 기록 조회",
+	"AI 업무보고 조회",
+	"작업함 항목 정리 초안",
+	"write/admin 작업은 실행 전 확인 요청",
+];
+
 function ProviderCard({
 	onSelect,
 	provider,
@@ -900,10 +1203,10 @@ function ProviderCard({
 }) {
 	return (
 		<button className="provider-card" type="button" data-selected={selected} onClick={onSelect}>
-			<span>{provider.freeTier ? "무료 우선" : "유료"}</span>
-			<strong>{provider.name}</strong>
-			<small>{provider.model}</small>
-			<em>{provider.status === "ready" ? "연결됨" : provider.status === "needs_key" ? "키 필요" : "준비중"}</em>
+			<strong>{provider.model}</strong>
+			{provider.status === "ready" ? null : (
+				<em>{provider.status === "needs_key" ? "키 필요" : "준비중"}</em>
+			)}
 		</button>
 	);
 }
@@ -932,7 +1235,21 @@ function SpeechButton({
 	);
 }
 
-function LlmRunCard({ run, featured }: { run: LlmRun; featured?: boolean }) {
+function LlmRunCard({
+	featured,
+	isSpeaking,
+	onSpeak,
+	onStop,
+	run,
+	speechSupported,
+}: {
+	featured?: boolean;
+	isSpeaking?: boolean;
+	onSpeak?: () => void;
+	onStop?: () => void;
+	run: LlmRun;
+	speechSupported?: boolean;
+}) {
 	return (
 		<article className={featured ? "llm-run-card featured" : "llm-run-card"}>
 			<div>
@@ -942,6 +1259,17 @@ function LlmRunCard({ run, featured }: { run: LlmRun; featured?: boolean }) {
 				<h3>{run.prompt}</h3>
 			</div>
 			<span>{run.response}</span>
+			{onSpeak ? (
+				<button
+					className="llm-speak-button"
+					type="button"
+					disabled={!speechSupported}
+					onClick={isSpeaking ? onStop : onSpeak}
+				>
+					{isSpeaking ? <VolumeX aria-hidden="true" size={15} /> : <Volume2 aria-hidden="true" size={15} />}
+					{isSpeaking ? "읽기 중지" : "답변 읽기"}
+				</button>
+			) : null}
 			<small>{new Date(run.createdAt).toLocaleString()}</small>
 		</article>
 	);
@@ -1000,6 +1328,174 @@ function WorkInboxPage() {
 			</div>
 		</PageFrame>
 	);
+}
+
+function MemosPage() {
+	const [title, setTitle] = useState("");
+	const [content, setContent] = useState("");
+	const [file, setFile] = useState<File>();
+	const [isSaving, setIsSaving] = useState(false);
+	const [ocrStatus, setOcrStatus] = useState("");
+	const memos = useQuery({
+		queryKey: ["memos"],
+		queryFn: rpcClient.getMemos,
+	});
+
+	const save = async () => {
+		if (!title.trim() && !file) {
+			return;
+		}
+		setIsSaving(true);
+		try {
+			const fileBase64 = file ? await readFileAsBase64(file) : undefined;
+			const extractedText = file ? await extractMemoText(file, setOcrStatus) : undefined;
+			await rpcClient.createMemo({
+				title: title.trim() || file?.name || "새 메모",
+				content: content.trim() || undefined,
+				fileName: file?.name,
+				mimeType: file?.type,
+				fileBase64,
+				ocrText: extractedText,
+				tags: file ? ["upload"] : undefined,
+			});
+			setTitle("");
+			setContent("");
+			setFile(undefined);
+			setOcrStatus("");
+			await memos.refetch();
+		} finally {
+			setIsSaving(false);
+		}
+	};
+
+	return (
+		<PageFrame title={text.memos} eyebrow="사진/PDF 메모">
+			<div className="memo-shell">
+				<section className="memo-compose">
+					<div>
+						<p className="app-eyebrow">빠른 저장</p>
+						<h2>메모 또는 파일 추가</h2>
+					</div>
+					<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="제목" />
+					<textarea
+						value={content}
+						onChange={(event) => setContent(event.target.value)}
+						placeholder="내용을 직접 입력하거나 사진/PDF를 올리세요."
+					/>
+					<label className="memo-upload">
+						<input
+							type="file"
+							accept="image/*,application/pdf,text/plain,text/markdown"
+							onChange={(event) => setFile(event.target.files?.[0])}
+						/>
+						<span>{file ? file.name : "사진첩/파일 선택"}</span>
+					</label>
+					{ocrStatus ? <p className="memo-ocr-status">{ocrStatus}</p> : null}
+					<button className="schedule-save-button" type="button" onClick={save} disabled={isSaving}>
+						{isSaving ? "저장 중" : "메모 저장"}
+					</button>
+				</section>
+				<section className="memo-list">
+					{memos.data?.length ? (
+						memos.data.map((memo) => <MemoCard item={memo} key={memo.id} onDone={() => memos.refetch()} />)
+					) : (
+						<div className="direct-empty">아직 저장된 메모가 없습니다.</div>
+					)}
+				</section>
+			</div>
+		</PageFrame>
+	);
+}
+
+function MemoCard({ item, onDone }: { item: Memo; onDone: () => void }) {
+	const [isSummarizing, setIsSummarizing] = useState(false);
+	const canSummarize = Boolean(item.ocrText || item.content);
+
+	const summarize = async () => {
+		if (!canSummarize) {
+			return;
+		}
+		setIsSummarizing(true);
+		try {
+			await rpcClient.summarizeMemo(item.id);
+			onDone();
+		} finally {
+			setIsSummarizing(false);
+		}
+	};
+
+	return (
+		<article className="memo-card">
+			<div>
+				<strong>{item.title}</strong>
+				<span>
+					{item.fileName ?? "텍스트 메모"} · {memoOcrLabel[item.ocrStatus]}
+				</span>
+			</div>
+			<p>{item.summary ?? item.ocrText ?? item.content ?? "OCR 처리가 필요한 파일입니다."}</p>
+			<button type="button" disabled={!canSummarize || isSummarizing} onClick={summarize}>
+				{isSummarizing ? "요약 중" : "LLM 요약"}
+			</button>
+		</article>
+	);
+}
+
+const memoOcrLabel: Record<Memo["ocrStatus"], string> = {
+	none: "텍스트 없음",
+	pending: "OCR 대기",
+	completed: "텍스트 추출됨",
+	failed: "OCR 실패",
+};
+
+function isTextLikeFile(file: File) {
+	return file.type.startsWith("text/") || file.name.endsWith(".md");
+}
+
+function isImageFile(file: File) {
+	return file.type.startsWith("image/");
+}
+
+async function extractMemoText(file: File, setStatus: (status: string) => void) {
+	if (isTextLikeFile(file)) {
+		setStatus("텍스트 읽는 중");
+		return readFileAsText(file);
+	}
+	if (isImageFile(file)) {
+		setStatus("이미지 OCR 준비 중");
+		const { recognize } = await import("tesseract.js");
+		const result = await recognize(file, "kor+eng", {
+			logger: (message) => {
+				if (message.status === "recognizing text") {
+					setStatus(`OCR 진행 중 ${Math.round(message.progress * 100)}%`);
+				}
+			},
+		});
+		setStatus("OCR 완료");
+		return result.data.text.trim();
+	}
+	if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+		setStatus("PDF OCR은 다음 단계에서 페이지 이미지 변환 후 처리됩니다.");
+		return undefined;
+	}
+	return undefined;
+}
+
+function readFileAsBase64(file: File) {
+	return new Promise<string>((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+		reader.onerror = () => reject(reader.error);
+		reader.readAsDataURL(file);
+	});
+}
+
+function readFileAsText(file: File) {
+	return new Promise<string>((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => resolve(String(reader.result ?? ""));
+		reader.onerror = () => reject(reader.error);
+		reader.readAsText(file);
+	});
 }
 
 function TodayNewsPage() {
@@ -1183,6 +1679,26 @@ function CompactLine({ title, meta }: { title: string; meta: string }) {
 	);
 }
 
+function HealthCompactLine({
+	health,
+	summary,
+}: {
+	health?: HealthEntry;
+	summary?: HealthConnectDailySummary;
+}) {
+	const exerciseMinutes = health?.exerciseMinutes ?? summary?.exerciseMinutes ?? 0;
+	const steps = typeof summary?.steps === "number" ? `${summary.steps.toLocaleString()}보` : "걸음 없음";
+	const stress = health?.stress ?? "-";
+	const title = health?.symptoms ?? (summary ? "Health Connect 자동 기록" : "오늘 건강 기록");
+
+	return (
+		<CompactLine
+			title={title}
+			meta={`스트레스 ${stress} / 운동 ${exerciseMinutes}분 / ${steps}`}
+		/>
+	);
+}
+
 function humanText(value: string) {
 	return value.replace(/\\u([0-9a-fA-F]{4})/g, (_, code: string) =>
 		String.fromCharCode(Number.parseInt(code, 16)),
@@ -1222,19 +1738,70 @@ function SettingsPage() {
 		queryKey: ["health"],
 		queryFn: rpcClient.getHealth,
 	});
+	const { session } = useAuthGuard();
 
 	return (
-		<PageFrame title={text.settings} eyebrow="로컬 구성">
-			<div className="settings-panel">
-				<div>
-					<h2>RPC 클라이언트</h2>
-					<p>
-						{health.data?.ok
-							? "로컬 연결이 정상 응답 중입니다."
-							: "로컬 연결을 확인하는 중입니다."}
-					</p>
-				</div>
-				<span>{health.data?.checkedAt ?? "확인 중"}</span>
+		<PageFrame title={text.settings} eyebrow="계정 및 앱 관리">
+			<div className="settings-grid">
+				<section className="settings-panel">
+					<div>
+						<h2>계정</h2>
+						<p>{session?.email ?? text.localUser}</p>
+					</div>
+					<button
+						className="settings-action"
+						type="button"
+						onClick={() => {
+							clearAuthSession();
+							globalThis.location.assign("/login");
+						}}
+					>
+						로그아웃
+					</button>
+				</section>
+				<section className="settings-panel">
+					<div>
+						<h2>개인정보</h2>
+						<p>현재는 로컬 세션 기반입니다. Cloudflare Access 프로필 연동 후 이름/알림 설정을 확장합니다.</p>
+					</div>
+					<span>준비 중</span>
+				</section>
+				<section className="settings-panel">
+					<div>
+						<h2>관리 사이트</h2>
+						<p>등록된 사이트, 원본 관리자, 직접 API 연결 상태를 확인합니다.</p>
+					</div>
+					<Link className="settings-action" to="/sites">
+						열기
+					</Link>
+				</section>
+				<section className="settings-panel">
+					<div>
+						<h2>연동 관리</h2>
+						<p>서비스 토큰, 커넥터, 외부 API 연결 상태를 정리합니다.</p>
+					</div>
+					<Link className="settings-action" to="/connectors">
+						열기
+					</Link>
+				</section>
+				<section className="settings-panel">
+					<div>
+						<h2>API 연결</h2>
+						<p>
+							{health.data?.ok
+								? "All For One API가 정상 응답 중입니다."
+								: "API 연결을 확인하는 중입니다."}
+						</p>
+					</div>
+					<span>{health.data?.checkedAt ?? "확인 중"}</span>
+				</section>
+				<section className="settings-panel">
+					<div>
+						<h2>앱 정보</h2>
+						<p>설치형 웹앱, Health Connect, GPS 지역 기능을 순차적으로 확장 중입니다.</p>
+					</div>
+					<span>PWA</span>
+				</section>
 			</div>
 		</PageFrame>
 	);

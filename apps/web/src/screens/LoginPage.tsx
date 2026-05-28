@@ -5,17 +5,31 @@ import { HudBackground } from "./HudBackground";
 export function LoginPage() {
 	const [showPassword, setShowPassword] = useState(false);
 
+	const login = () => {
+		setAuthSession({
+			userId: "local-dev",
+			email: "operator@allforone.local",
+		});
+		globalThis.location.assign("/");
+	};
+
 	return (
 		<main className="hero-shell">
 			<HudBackground />
 			<section className="login-panel" aria-label="All For One 로그인">
 				<p className="kicker">개인 통합 관리 시스템 · v1.0</p>
 				<h1>All For One</h1>
-				<form className="login-form">
+				<form
+					className="login-form"
+					onSubmit={(event) => {
+						event.preventDefault();
+						login();
+					}}
+				>
 					<div className="login-fields">
 						<label>
 							<span>아이디</span>
-							<input type="email" name="email" autoComplete="email" />
+							<input type="text" name="username" autoComplete="username" />
 						</label>
 						<label>
 							<span>비밀번호</span>
@@ -36,18 +50,7 @@ export function LoginPage() {
 							</div>
 						</label>
 					</div>
-					<button
-						type="button"
-						className="login-action"
-						aria-label="로그인"
-						onClick={() => {
-							setAuthSession({
-								userId: "local-dev",
-								email: "operator@allforone.local",
-							});
-							globalThis.location.assign("/");
-						}}
-					>
+					<button type="submit" className="login-action" aria-label="로그인">
 						<span>입장</span>
 					</button>
 				</form>

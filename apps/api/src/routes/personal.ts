@@ -9,6 +9,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../index";
 import { parseInput, parseJsonBody, toValidationResponse } from "../lib/validation";
+import { getLatestHealthConnectSummaryByDate } from "../repositories/health-connect";
 import {
 	createPersonalSchedule,
 	createAiReport,
@@ -62,6 +63,32 @@ function stripInlineFile<T extends { metadata?: Record<string, unknown> }>(
 	};
 }
 
+function isTodayNewsItem(item: {
+	deviceId?: string;
+	deviceName?: string;
+	metadata?: Record<string, unknown>;
+}) {
+	return (
+		item.metadata?.category === TODAY_NEWS_CATEGORY ||
+		item.deviceId === "today-news" ||
+		item.deviceName === "오늘의 뉴스" ||
+		item.deviceName === "?ㅻ뒛???댁뒪"
+	);
+}
+
+function isDeviceAuthorized(c: { req: Request; env: AppEnv["Bindings"] }) {
+	const expected = c.env.AFO_DEVICE_INGEST_KEY;
+
+	if (!expected && c.env.ENVIRONMENT === "prod") {
+		return false;
+	}
+	if (!expected) {
+		return true;
+	}
+
+	return c.req.headers.get("X-AFO-Device-Key") === expected;
+}
+
 export const personalRoutes = new Hono<AppEnv>()
 	.onError(
 		(error) => toValidationResponse(error) ?? Response.json({ ok: false }, { status: 500 }),
@@ -71,10 +98,19 @@ export const personalRoutes = new Hono<AppEnv>()
 		const targetDate = date ?? todayDate();
 		const dayStart = new Date(`${targetDate}T00:00:00.000Z`).toISOString();
 		const dayEnd = new Date(`${targetDate}T23:59:59.999Z`).toISOString();
-		const [dailyLog, healthEntry, schedules, workItems, aiReports, todayNews] =
+		const [
+			dailyLog,
+			healthEntry,
+			healthConnectSummary,
+			schedules,
+			workItems,
+			aiReports,
+			todayNews,
+		] =
 			await Promise.all([
 				getDailyLogByDate(c.env.DB, targetDate),
 				getHealthEntryByDate(c.env.DB, targetDate),
+				getLatestHealthConnectSummaryByDate(c.env.DB, targetDate),
 				listPersonalSchedules(c.env.DB, { from: dayStart, to: dayEnd }),
 				listWorkItems(c.env.DB),
 				listAiReports(c.env.DB),
@@ -82,7 +118,7 @@ export const personalRoutes = new Hono<AppEnv>()
 			]);
 		const sanitizedNews = todayNews.map(stripInlineFile);
 		const openWorkItems = workItems
-			.filter((item) => item.metadata?.category !== TODAY_NEWS_CATEGORY)
+			.filter((item) => !isTodayNewsItem(item))
 			.map(stripInlineFile);
 
 		return c.json({
@@ -91,6 +127,7 @@ export const personalRoutes = new Hono<AppEnv>()
 				date: targetDate,
 				dailyLog,
 				healthEntry,
+				healthConnectSummary,
 				schedules,
 				openWorkItems: openWorkItems
 					.filter((item) => item.status === "new")
@@ -150,6 +187,10 @@ export const personalRoutes = new Hono<AppEnv>()
 		return c.json({ ok: true, reports });
 	})
 	.post("/ai-reports", async (c) => {
+		if (!isDeviceAuthorized({ req: c.req.raw, env: c.env })) {
+			return c.json({ ok: false, error: "device_ingest_unauthorized" }, 401);
+		}
+
 		const input = await parseJsonBody(c.req.raw, newAiReportSchema);
 		const report = await createAiReport(c.env.DB, input);
 		return c.json({ ok: true, report }, 201);

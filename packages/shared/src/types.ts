@@ -1,4 +1,5 @@
 export type ISODateTime = string;
+export type ISODate = string;
 
 export type DateRange = {
 	from: ISODateTime;
@@ -332,10 +333,76 @@ export type NewAiReport = {
 	occurredAt?: ISODateTime;
 };
 
+export type HealthConnectDailySummary = {
+	date: ISODate;
+	deviceId: string;
+	steps?: number;
+	sleepMinutes?: number;
+	exerciseMinutes?: number;
+	activeCalories?: number;
+	totalCalories?: number;
+	distanceMeters?: number;
+	heartRateAvg?: number;
+	heartRateMin?: number;
+	heartRateMax?: number;
+	weightKg?: number;
+	source?: string;
+	raw?: Record<string, unknown>;
+	syncedAt: ISODateTime;
+	createdAt: ISODateTime;
+	updatedAt: ISODateTime;
+};
+
+export type NewHealthConnectDailySummary = Omit<
+	HealthConnectDailySummary,
+	"createdAt" | "updatedAt"
+>;
+
+export type HealthConnectSyncInput = {
+	deviceId: string;
+	lastSyncedAt?: ISODateTime;
+	summaries: NewHealthConnectDailySummary[];
+};
+
+export type HealthConnectSyncState = {
+	deviceId: string;
+	lastSyncedAt: ISODateTime;
+	lastStatus: "ok" | "error";
+	errorMessage?: string;
+	createdAt: ISODateTime;
+	updatedAt: ISODateTime;
+};
+
+export type Memo = {
+	id: string;
+	title: string;
+	content?: string;
+	fileName?: string;
+	mimeType?: string;
+	fileBase64?: string;
+	ocrText?: string;
+	ocrStatus: "none" | "pending" | "completed" | "failed";
+	summary?: string;
+	tags?: string[];
+	createdAt: ISODateTime;
+	updatedAt: ISODateTime;
+};
+
+export type NewMemo = {
+	title: string;
+	content?: string;
+	fileName?: string;
+	mimeType?: string;
+	fileBase64?: string;
+	ocrText?: string;
+	tags?: string[];
+};
+
 export type TodaySnapshot = {
 	date: string;
 	dailyLog?: DailyLog;
 	healthEntry?: HealthEntry;
+	healthConnectSummary?: HealthConnectDailySummary;
 	schedules: PersonalSchedule[];
 	openWorkItems: WorkItem[];
 	aiReports: AiReport[];

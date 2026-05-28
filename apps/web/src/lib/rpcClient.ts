@@ -19,6 +19,9 @@ import type {
 	SiteEndpoint,
 	WorkDevice,
 	WorkItem,
+	HealthConnectDailySummary,
+	Memo,
+	NewMemo,
 } from "@all-for-one/shared";
 
 export type ConnectorSummary = {
@@ -44,10 +47,19 @@ export type PersonalTodaySnapshot = {
 	date: string;
 	dailyLog?: DailyLog;
 	healthEntry?: HealthEntry;
+	healthConnectSummary?: HealthConnectDailySummary;
 	schedules: PersonalSchedule[];
 	openWorkItems: WorkItem[];
 	aiReports: AiReport[];
 	todayNews: WorkItem[];
+};
+
+export type ReverseGeocodeResult = {
+	lat: number;
+	lon: number;
+	region: string;
+	displayName: string;
+	address: Record<string, string>;
 };
 
 const fallbackProviders: LlmProvider[] = [
@@ -443,6 +455,32 @@ export const rpcClient = {
 	async runLlmCommandPreview(input: NewLlmChat): Promise<LlmRun> {
 		const response = await postJson<{ run: LlmRun }>("/llm/command/preview", input);
 		return response.run;
+	},
+	async getMemos(): Promise<Memo[]> {
+		try {
+			const response = await getJson<{ memos: Memo[] }>("/memos");
+			return response.memos;
+		} catch {
+			return [];
+		}
+	},
+	async createMemo(input: NewMemo): Promise<Memo> {
+		const response = await postJson<{ memo: Memo }>("/memos", input);
+		return response.memo;
+	},
+	async summarizeMemo(id: string): Promise<Memo> {
+		const response = await postJson<{ memo: Memo }>(`/memos/${id}/summarize`, {});
+		return response.memo;
+	},
+	async reverseGeocode(lat: number, lon: number): Promise<ReverseGeocodeResult> {
+		const params = new URLSearchParams({
+			lat: String(lat),
+			lon: String(lon),
+		});
+		const response = await getJson<{ location: ReverseGeocodeResult }>(
+			`/geo/reverse?${params.toString()}`,
+		);
+		return response.location;
 	},
 	async getHealth() {
 		await delay();

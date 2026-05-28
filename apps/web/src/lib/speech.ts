@@ -87,3 +87,48 @@ export function useSpeechInput(onText: (text: string) => void) {
 		stop,
 	};
 }
+
+export function useSpeechOutput() {
+	const [isSpeaking, setIsSpeaking] = useState(false);
+	const [isSupported, setIsSupported] = useState(false);
+
+	useEffect(() => {
+		setIsSupported(typeof window !== "undefined" && "speechSynthesis" in window);
+		return () => {
+			if (typeof window !== "undefined" && "speechSynthesis" in window) {
+				window.speechSynthesis.cancel();
+			}
+		};
+	}, []);
+
+	const speak = (text: string) => {
+		if (!isSupported || !text.trim()) {
+			return;
+		}
+
+		window.speechSynthesis.cancel();
+		const utterance = new SpeechSynthesisUtterance(text.trim());
+		utterance.lang = "ko-KR";
+		utterance.rate = 1;
+		utterance.pitch = 0.96;
+		utterance.onend = () => setIsSpeaking(false);
+		utterance.onerror = () => setIsSpeaking(false);
+		setIsSpeaking(true);
+		window.speechSynthesis.speak(utterance);
+	};
+
+	const stop = () => {
+		if (!isSupported) {
+			return;
+		}
+		window.speechSynthesis.cancel();
+		setIsSpeaking(false);
+	};
+
+	return {
+		isSpeaking,
+		isSupported,
+		speak,
+		stop,
+	};
+}
