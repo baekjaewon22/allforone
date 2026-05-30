@@ -3275,8 +3275,9 @@ body {
 }
 
 .health-connect-actions {
+	grid-column: 1 / -1;
 	display: grid;
-	justify-items: end;
+	justify-items: stretch;
 	gap: 8px;
 }
 
@@ -3297,15 +3298,46 @@ body {
 }
 
 .health-connect-actions button {
-	height: 42px;
+	width: 100%;
+	min-height: 56px;
 	border: 0;
 	border-radius: 12px;
-	padding: 0 14px;
+	padding: 0 18px;
 	color: #ffffff;
 	background: linear-gradient(135deg, #0f766e, #052e2b);
 	cursor: pointer;
 	font: inherit;
+	font-size: 16px;
 	font-weight: 950;
+}
+
+.health-connect-actions button:disabled {
+	cursor: wait;
+	opacity: 0.72;
+}
+
+.health-connect-latest {
+	grid-column: 1 / -1;
+	display: grid;
+	grid-template-columns: repeat(6, minmax(0, 1fr));
+	gap: 8px;
+	padding-top: 12px;
+	border-top: 1px solid rgba(15, 118, 110, 0.12);
+}
+
+.health-connect-latest strong,
+.health-connect-latest span {
+	min-width: 0;
+	border-radius: 10px;
+	padding: 8px 10px;
+	background: rgba(255, 255, 255, 0.62);
+	color: #334155;
+	font-size: 12px;
+	font-weight: 850;
+}
+
+.health-connect-latest strong {
+	color: #0f766e;
 }
 
 .today-grid {
@@ -3619,6 +3651,10 @@ body {
 
 	.health-connect-actions button {
 		width: 100%;
+	}
+
+	.health-connect-latest {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 
 	.today-panel {

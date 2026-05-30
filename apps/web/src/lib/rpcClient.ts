@@ -417,7 +417,32 @@ export const rpcClient = {
 			);
 			return response;
 		} catch {
-			return { configured: false };
+			return { configured: Boolean(deviceIngestKey) };
+		}
+	},
+	async getHealthConnectSummaries(range?: {
+		from?: string;
+		to?: string;
+		deviceId?: string;
+	}): Promise<HealthConnectDailySummary[]> {
+		const params = new URLSearchParams();
+		if (range?.from) {
+			params.set("from", range.from);
+		}
+		if (range?.to) {
+			params.set("to", range.to);
+		}
+		if (range?.deviceId) {
+			params.set("deviceId", range.deviceId);
+		}
+		const query = params.toString();
+		try {
+			const response = await getJson<{ summaries: HealthConnectDailySummary[] }>(
+				`/health-connect/daily${query ? `?${query}` : ""}`,
+			);
+			return response.summaries;
+		} catch {
+			return [];
 		}
 	},
 	async syncHealthConnect(input: HealthConnectSyncInput): Promise<void> {

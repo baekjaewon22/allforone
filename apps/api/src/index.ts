@@ -49,6 +49,9 @@ export const app = new Hono<AppEnv>()
 			origin: [
 				"http://127.0.0.1:5173",
 				"http://127.0.0.1:5174",
+				"http://localhost",
+				"https://localhost",
+				"capacitor://localhost",
 				"https://all-for-one-db9.pages.dev",
 			],
 			allowHeaders: ["Content-Type", "X-AFO-Device-Key"],

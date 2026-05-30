@@ -1,19 +1,11 @@
 package kr.allforone.app
 
 import android.content.Intent
+import android.net.Uri
 import android.provider.Settings
+import androidx.activity.result.ActivityResultLauncher
 import androidx.health.connect.client.HealthConnectClient
-import androidx.health.connect.client.permission.HealthPermission
-import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
-import androidx.health.connect.client.records.DistanceRecord
-import androidx.health.connect.client.records.ExerciseSessionRecord
-import androidx.health.connect.client.records.HeartRateRecord
-import androidx.health.connect.client.records.SleepSessionRecord
-import androidx.health.connect.client.records.StepsRecord
-import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
-import androidx.health.connect.client.records.WeightRecord
-import androidx.health.connect.client.request.AggregateRequest
-import androidx.health.connect.client.time.TimeRangeFilter
+import androidx.health.connect.client.PermissionController
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -23,26 +15,29 @@ import com.getcapacitor.annotation.CapacitorPlugin
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.ZoneId
 
 @CapacitorPlugin(name = "AfoHealthConnect")
 class AfoHealthConnectPlugin : Plugin() {
-    private val permissions = setOf(
-        HealthPermission.getReadPermission(StepsRecord::class),
-        HealthPermission.getReadPermission(SleepSessionRecord::class),
-        HealthPermission.getReadPermission(ExerciseSessionRecord::class),
-        HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
-        HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class),
-        HealthPermission.getReadPermission(DistanceRecord::class),
-        HealthPermission.getReadPermission(HeartRateRecord::class),
-        HealthPermission.getReadPermission(WeightRecord::class),
-    )
+    private var permissionCall: PluginCall? = null
+    private lateinit var permissionLauncher: ActivityResultLauncher<Set<String>>
+
+    override fun load() {
+        permissionLauncher = activity.registerForActivityResult(
+            PermissionController.createRequestPermissionResultContract(),
+        ) {
+            val call = permissionCall ?: return@registerForActivityResult
+            permissionCall = null
+            resolveCurrentPermissionResult(call)
+        }
+    }
 
     @PluginMethod
     fun openSettings(call: PluginCall) {
         try {
-            context.startActivity(Intent(Settings.ACTION_APPLICATION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                .setData(Uri.parse("package:${context.packageName}"))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
             call.resolve()
         } catch (error: Exception) {
             call.reject("settings_open_failed", error)
@@ -50,8 +45,7 @@ class AfoHealthConnectPlugin : Plugin() {
     }
 
     @PluginMethod
-    fun readDailySummaries(call: PluginCall) {
-        val days = (call.getInt("days") ?: 7).coerceIn(1, 31)
+    fun requestHealthPermissions(call: PluginCall) {
         val status = HealthConnectClient.getSdkStatus(context)
         if (status != HealthConnectClient.SDK_AVAILABLE) {
             val result = JSObject()
@@ -61,71 +55,116 @@ class AfoHealthConnectPlugin : Plugin() {
             return
         }
 
+        if (permissionCall != null) {
+            call.reject("permission_request_in_progress")
+            return
+        }
+
+        permissionCall = call
+        activity.runOnUiThread {
+            permissionLauncher.launch(HealthConnectReader.requestPermissions)
+        }
+    }
+
+    @PluginMethod
+    fun readDailySummaries(call: PluginCall) {
+        val days = (call.getInt("days") ?: 7).coerceIn(1, 31)
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                when (val outcome = HealthConnectReader.read(context, days)) {
+                    is HealthConnectReader.Outcome.Unavailable -> {
+                        val result = JSObject()
+                        result.put("available", false)
+                        result.put("sdkStatus", outcome.sdkStatus)
+                        call.resolve(result)
+                    }
+                    is HealthConnectReader.Outcome.NeedsPermission -> {
+                        val result = JSObject()
+                        result.put("available", true)
+                        result.put("needsPermission", true)
+                        result.put("missing", JSArray(outcome.missing))
+                        call.resolve(result)
+                    }
+                    is HealthConnectReader.Outcome.Success -> {
+                        val summaries = JSArray()
+                        for (item in outcome.summaries) {
+                            val summary = JSObject()
+                            summary.put("date", item.date)
+                            summary.put("steps", item.steps)
+                            summary.put("sleepMinutes", item.sleepMinutes)
+                            summary.put("exerciseMinutes", item.exerciseMinutes)
+                            summary.put("activeCalories", item.activeCalories)
+                            summary.put("totalCalories", item.totalCalories)
+                            summary.put("distanceMeters", item.distanceMeters)
+                            summary.put("heartRateAvg", item.heartRateAvg)
+                            summary.put("heartRateMin", item.heartRateMin)
+                            summary.put("heartRateMax", item.heartRateMax)
+                            summary.put("weightKg", item.weightKg)
+                            summary.put("source", item.source)
+                            summary.put("syncedAt", item.syncedAt)
+                            summaries.put(summary)
+                        }
+                        val result = JSObject()
+                        result.put("available", true)
+                        result.put("needsPermission", false)
+                        result.put("deviceId", outcome.deviceId)
+                        result.put("lastSyncedAt", outcome.lastSyncedAt)
+                        result.put("summaries", summaries)
+                        call.resolve(result)
+                    }
+                }
+            } catch (error: Exception) {
+                call.reject("health_connect_read_failed", error)
+            }
+        }
+    }
+
+    @PluginMethod
+    fun enableBackgroundSync(call: PluginCall) {
+        val apiBaseUrl = call.getString("apiBaseUrl")
+        if (apiBaseUrl.isNullOrBlank()) {
+            call.reject("missing_api_base_url")
+            return
+        }
+        val deviceKey = call.getString("deviceKey")
+        val days = (call.getInt("days") ?: 7).coerceIn(1, 31)
+        val intervalMinutes = (call.getInt("intervalMinutes") ?: 360).toLong()
+
+        try {
+            HealthSyncWorker.schedule(context, apiBaseUrl, deviceKey, days, intervalMinutes)
+            val result = JSObject()
+            result.put("scheduled", true)
+            result.put("intervalMinutes", intervalMinutes.coerceAtLeast(15))
+            call.resolve(result)
+        } catch (error: Exception) {
+            call.reject("background_sync_schedule_failed", error)
+        }
+    }
+
+    @PluginMethod
+    fun disableBackgroundSync(call: PluginCall) {
+        try {
+            HealthSyncWorker.cancel(context)
+            call.resolve()
+        } catch (error: Exception) {
+            call.reject("background_sync_cancel_failed", error)
+        }
+    }
+
+    private fun resolveCurrentPermissionResult(call: PluginCall) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val client = HealthConnectClient.getOrCreate(context)
                 val granted = client.permissionController.getGrantedPermissions()
-                val missing = permissions.filterNot { granted.contains(it) }
-                if (missing.isNotEmpty()) {
-                    val result = JSObject()
-                    result.put("available", true)
-                    result.put("needsPermission", true)
-                    result.put("missing", JSArray(missing))
-                    call.resolve(result)
-                    return@launch
-                }
-
-                val zone = ZoneId.systemDefault()
-                val today = LocalDate.now(zone)
-                val summaries = JSArray()
-                for (offset in days - 1 downTo 0) {
-                    val date = today.minusDays(offset.toLong())
-                    val start = date.atStartOfDay(zone).toInstant()
-                    val end = date.plusDays(1).atStartOfDay(zone).toInstant()
-                    val response = client.aggregate(
-                        AggregateRequest(
-                            metrics = setOf(
-                                StepsRecord.COUNT_TOTAL,
-                                SleepSessionRecord.SLEEP_DURATION_TOTAL,
-                                ExerciseSessionRecord.EXERCISE_DURATION_TOTAL,
-                                ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL,
-                                TotalCaloriesBurnedRecord.ENERGY_TOTAL,
-                                DistanceRecord.DISTANCE_TOTAL,
-                                HeartRateRecord.BPM_AVG,
-                                HeartRateRecord.BPM_MIN,
-                                HeartRateRecord.BPM_MAX,
-                                WeightRecord.WEIGHT_AVG,
-                            ),
-                            timeRangeFilter = TimeRangeFilter.between(start, end),
-                        ),
-                    )
-
-                    val summary = JSObject()
-                    summary.put("date", date.toString())
-                    summary.put("steps", response[StepsRecord.COUNT_TOTAL]?.toInt())
-                    summary.put("sleepMinutes", response[SleepSessionRecord.SLEEP_DURATION_TOTAL]?.toMinutes()?.toInt())
-                    summary.put("exerciseMinutes", response[ExerciseSessionRecord.EXERCISE_DURATION_TOTAL]?.toMinutes()?.toInt())
-                    summary.put("activeCalories", response[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories)
-                    summary.put("totalCalories", response[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories)
-                    summary.put("distanceMeters", response[DistanceRecord.DISTANCE_TOTAL]?.inMeters)
-                    summary.put("heartRateAvg", response[HeartRateRecord.BPM_AVG])
-                    summary.put("heartRateMin", response[HeartRateRecord.BPM_MIN])
-                    summary.put("heartRateMax", response[HeartRateRecord.BPM_MAX])
-                    summary.put("weightKg", response[WeightRecord.WEIGHT_AVG]?.inKilograms)
-                    summary.put("source", "android-health-connect")
-                    summary.put("syncedAt", java.time.Instant.now().toString())
-                    summaries.put(summary)
-                }
-
+                val missing = HealthConnectReader.readPermissions.filterNot { granted.contains(it) }
                 val result = JSObject()
                 result.put("available", true)
-                result.put("needsPermission", false)
-                result.put("deviceId", Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID) ?: "android")
-                result.put("lastSyncedAt", java.time.Instant.now().toString())
-                result.put("summaries", summaries)
+                result.put("granted", JSArray(granted.toList()))
+                result.put("missing", JSArray(missing))
+                result.put("needsPermission", missing.isNotEmpty())
                 call.resolve(result)
             } catch (error: Exception) {
-                call.reject("health_connect_read_failed", error)
+                call.reject("health_connect_permission_check_failed", error)
             }
         }
     }

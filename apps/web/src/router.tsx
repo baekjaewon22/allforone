@@ -1,4 +1,5 @@
 import { enabledConnectors } from "@all-for-one/connectors";
+import { Capacitor } from "@capacitor/core";
 import type { AiReport, DailyLog, HealthConnectDailySummary, HealthEntry, LlmProvider, LlmProviderId, LlmRun, Memo, PersonalSchedule, WorkItem } from "@all-for-one/shared";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -558,12 +559,20 @@ function HealthPage() {
 		queryKey: ["health-connect-status"],
 		queryFn: rpcClient.getHealthConnectStatus,
 	});
+	const today = new Date();
+	const to = toLocalDateInputValue(today);
+	const from = toLocalDateInputValue(
+		new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6),
+	);
+	const healthConnectSummaries = useQuery({
+		queryKey: ["health-connect-summaries", from, to],
+		queryFn: () => rpcClient.getHealthConnectSummaries({ from, to }),
+	});
 	const healthConnectState = healthConnect.data?.state;
+	const latestSummary = healthConnectSummaries.data?.[0];
 	const [syncMessage, setSyncMessage] = useState("");
-	const isNativeShell =
-		typeof window !== "undefined" &&
-		(window.navigator.userAgent.includes("AllForOneMobile") ||
-			window.location.protocol === "capacitor:");
+	const [isSyncing, setIsSyncing] = useState(false);
+	const isNativeShell = Capacitor.isNativePlatform();
 
 	return (
 		<PageFrame title={text.health} eyebrow="컨디션 관리">
@@ -587,34 +596,55 @@ function HealthPage() {
 					</span>
 					<button
 						type="button"
+						disabled={isSyncing}
 						onClick={async () => {
 							if (!isNativeShell) {
-								alert("Health Connect 권한 연결은 Android 앱 빌드에서 활성화됩니다. 현재 웹/PWA는 수신 API 상태만 확인합니다.");
+								alert("Health Connect 권한 요청은 Android 앱 빌드에서만 사용할 수 있습니다. 현재는 API 수신 상태만 확인합니다.");
 								return;
 							}
-							setSyncMessage("Health Connect 데이터를 읽는 중입니다...");
+							setIsSyncing(true);
+							setSyncMessage("Health Connect 권한과 최근 데이터를 확인하는 중입니다...");
 							try {
 								const result = await syncNativeHealthConnect(7);
 								if (result.status === "synced") {
 									setSyncMessage("최근 7일 건강 데이터를 동기화했습니다.");
+									alert("최근 7일 건강 데이터를 동기화했습니다.");
 									await healthConnect.refetch();
+									await healthConnectSummaries.refetch();
 									await entries.refetch();
 								} else if (result.status === "needs_permission") {
-									setSyncMessage("올포원 앱의 Health Connect 읽기 권한을 허용한 뒤 다시 눌러주세요.");
+									setSyncMessage("휴대폰 설정의 Health Connect 읽기 권한을 허용한 뒤 다시 눌러주세요.");
+									alert("Health Connect 읽기 권한이 아직 필요합니다.");
 								} else if (result.status === "unavailable") {
 									setSyncMessage("이 기기에서 Health Connect를 사용할 수 없습니다.");
+									alert("이 기기에서 Health Connect를 사용할 수 없습니다.");
 								} else {
 									setSyncMessage("동기화할 건강 데이터가 없습니다.");
+									alert("동기화할 건강 데이터가 없습니다.");
 								}
-							} catch {
+							} catch (error) {
+								console.error(error);
 								setSyncMessage("Health Connect 동기화에 실패했습니다.");
+								alert("Health Connect 동기화에 실패했습니다.");
+							} finally {
+								setIsSyncing(false);
 							}
 						}}
 					>
-						{isNativeShell ? "동기화" : "연결 방법"}
+						{isSyncing ? "동기화 중" : isNativeShell ? "권한 요청 및 동기화" : "연결 방법"}
 					</button>
 				</div>
 				{syncMessage && <p className="health-connect-message">{syncMessage}</p>}
+				{latestSummary && (
+					<div className="health-connect-latest">
+						<strong>{latestSummary.date}</strong>
+						<span>걸음 {latestSummary.steps?.toLocaleString() ?? "-"}</span>
+						<span>수면 {latestSummary.sleepMinutes ? `${Math.round(latestSummary.sleepMinutes / 60)}h` : "-"}</span>
+						<span>운동 {latestSummary.exerciseMinutes ?? 0}m</span>
+						<span>심박 {latestSummary.heartRateAvg ? `${Math.round(latestSummary.heartRateAvg)} bpm` : "-"}</span>
+						<span>체중 {latestSummary.weightKg ? `${latestSummary.weightKg.toFixed(1)} kg` : "-"}</span>
+					</div>
+				)}
 			</section>
 			<div className="board-toolbar">
 				<div>
@@ -977,12 +1007,6 @@ function toLocalDateInputValue(date: Date) {
 	const day = String(date.getDate()).padStart(2, "0");
 	return `${year}-${month}-${day}`;
 }
-
-const scheduleStatusLabel: Record<PersonalSchedule["status"], string> = {
-	planned: "예정",
-	done: "완료",
-	cancelled: "취소",
-};
 
 function AiReportsPage() {
 	const reports = useQuery({
@@ -1939,4 +1963,3 @@ function WidgetSlot({ title, value }: { title: string; value: string }) {
 		</section>
 	);
 }
-

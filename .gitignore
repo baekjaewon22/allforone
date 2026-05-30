@@ -6,9 +6,14 @@
 # $ git config --global mergetool.keepBackup false
 *.orig
 
+# Local tooling state (Claude Code / Serena)
+.claude/
+.serena/
+
 # Created by git when using merge tools for conflicts
 *.BACKUP.*
 *.BASE.*
+!tsconfig.base.json
 *.LOCAL.*
 *.REMOTE.*
 *_BACKUP_*.txt
@@ -54,6 +59,7 @@ Temporary Items
 logs
 *.log
 npm-debug.log*
+package-lock.json
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
