@@ -12,9 +12,11 @@ createRoot(document.getElementById("root")!).render(
 	</StrictMode>,
 );
 
-requestAnimationFrame(() => {
-	document.getElementById("app-boot")?.remove();
-});
+window.setTimeout(() => {
+	const boot = document.getElementById("app-boot");
+	boot?.classList.add("app-boot--done");
+	window.setTimeout(() => boot?.remove(), 280);
+}, 850);
 
 if ("serviceWorker" in navigator) {
 	window.addEventListener("load", () => {

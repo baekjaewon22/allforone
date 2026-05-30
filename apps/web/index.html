@@ -6,9 +6,9 @@
 		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 		<meta name="apple-mobile-web-app-title" content="All For One" />
-		<link rel="manifest" href="/manifest.webmanifest" />
-		<link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
-		<link rel="apple-touch-icon" href="/icons/apple-touch-icon.svg" />
+		<link rel="manifest" href="/manifest.webmanifest?v=2" />
+		<link rel="icon" type="image/svg+xml" href="/icons/icon.svg?v=2" />
+		<link rel="apple-touch-icon" href="/icons/apple-touch-icon.svg?v=2" />
 		<title>All For One</title>
 		<style>
 			:root {
@@ -18,30 +18,52 @@
 			.app-boot {
 				position: fixed;
 				inset: 0;
+				z-index: 9999;
 				display: grid;
 				place-items: center;
 				padding: 28px;
 				background:
-					radial-gradient(circle at 50% 45%, rgba(48, 255, 134, 0.13), transparent 34%),
+					radial-gradient(circle at 50% 42%, rgba(80, 255, 143, 0.17), transparent 34%),
+					radial-gradient(circle at 48% 58%, rgba(37, 99, 235, 0.11), transparent 42%),
 					linear-gradient(135deg, #07120f 0%, #030706 100%);
 				color: #efffe8;
 				font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+				transition:
+					opacity 0.28s ease,
+					transform 0.28s ease;
+			}
+
+			.app-boot--done {
+				opacity: 0;
+				transform: scale(1.015);
+				pointer-events: none;
 			}
 
 			.app-boot-card {
-				width: min(320px, 84vw);
+				position: relative;
+				width: min(340px, 84vw);
 				display: grid;
 				justify-items: center;
 				gap: 18px;
 			}
 
+			.app-boot-card::before {
+				content: "";
+				position: absolute;
+				inset: -42px 8px auto;
+				height: 1px;
+				background: linear-gradient(90deg, transparent, rgba(234, 255, 199, 0.7), transparent);
+				box-shadow: 0 0 34px rgba(74, 255, 138, 0.4);
+			}
+
 			.app-boot-icon {
-				width: 92px;
-				height: 92px;
-				border-radius: 22px;
+				width: 96px;
+				height: 96px;
+				border-radius: 24px;
 				box-shadow:
-					0 22px 70px rgba(0, 0, 0, 0.48),
-					0 0 38px rgba(48, 255, 134, 0.22);
+					0 22px 70px rgba(0, 0, 0, 0.5),
+					0 0 42px rgba(48, 255, 134, 0.24);
+				animation: app-boot-icon 1.8s ease-in-out infinite;
 			}
 
 			.app-boot-copy {
@@ -51,41 +73,59 @@
 			}
 
 			.app-boot-copy strong {
-				font-size: 20px;
+				font-size: 21px;
 				letter-spacing: 0.02em;
 			}
 
 			.app-boot-copy span {
-				color: rgba(239, 255, 232, 0.58);
+				color: rgba(239, 255, 232, 0.6);
 				font-size: 12px;
-				font-weight: 700;
+				font-weight: 800;
 				letter-spacing: 0.18em;
 				text-transform: uppercase;
 			}
 
 			.app-boot-track {
+				position: relative;
 				width: 100%;
-				height: 7px;
+				height: 8px;
 				overflow: hidden;
-				border: 1px solid rgba(210, 255, 197, 0.12);
+				border: 1px solid rgba(210, 255, 197, 0.14);
 				border-radius: 999px;
-				background: rgba(255, 255, 255, 0.06);
-				box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.42);
+				background:
+					linear-gradient(90deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.1)),
+					rgba(255, 255, 255, 0.04);
+				box-shadow:
+					inset 0 0 16px rgba(0, 0, 0, 0.46),
+					0 0 24px rgba(48, 255, 134, 0.1);
 			}
 
 			.app-boot-track span {
 				display: block;
-				width: 45%;
+				width: 44%;
 				height: 100%;
 				border-radius: inherit;
 				background: linear-gradient(90deg, transparent, #46ff8d 24%, #f2ffc5 52%, #22d871 78%, transparent);
-				box-shadow: 0 0 22px rgba(62, 255, 136, 0.72);
-				animation: app-boot-flow 1.25s cubic-bezier(0.76, 0, 0.24, 1) infinite;
+				box-shadow: 0 0 24px rgba(62, 255, 136, 0.76);
+				animation: app-boot-flow 1.05s cubic-bezier(0.76, 0, 0.24, 1) infinite;
+			}
+
+			.app-boot-status {
+				color: rgba(239, 255, 232, 0.48);
+				font-size: 11px;
+				font-weight: 800;
+				letter-spacing: 0.14em;
+				text-transform: uppercase;
 			}
 
 			@keyframes app-boot-flow {
-				0% { transform: translateX(-110%); }
-				100% { transform: translateX(250%); }
+				0% { transform: translateX(-115%); }
+				100% { transform: translateX(260%); }
+			}
+
+			@keyframes app-boot-icon {
+				0%, 100% { transform: translateY(0); }
+				50% { transform: translateY(-4px); }
 			}
 		</style>
 	</head>
@@ -93,7 +133,7 @@
 		<div id="root">
 			<div class="app-boot" id="app-boot" aria-label="All For One 로딩 중">
 				<div class="app-boot-card">
-					<img src="/icons/icon.svg" alt="" class="app-boot-icon" />
+					<img src="/icons/icon.svg?v=2" alt="" class="app-boot-icon" />
 					<div class="app-boot-copy">
 						<strong>All For One</strong>
 						<span>Control Tower</span>
@@ -101,6 +141,7 @@
 					<div class="app-boot-track" aria-hidden="true">
 						<span></span>
 					</div>
+					<div class="app-boot-status">system initializing</div>
 				</div>
 			</div>
 		</div>

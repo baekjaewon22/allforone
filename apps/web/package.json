@@ -3,6 +3,9 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
+		"android:add": "cap add android",
+		"android:open": "cap open android",
+		"android:sync": "pnpm build && cap sync android",
 		"build": "tsc -p tsconfig.json --noEmit && vite build",
 		"check": "tsc -p tsconfig.json --noEmit",
 		"dev": "vite --host 127.0.0.1 --port 5173",
@@ -12,6 +15,8 @@
 	"dependencies": {
 		"@all-for-one/connectors": "workspace:*",
 		"@all-for-one/shared": "workspace:*",
+		"@capacitor/android": "^8.3.4",
+		"@capacitor/core": "^8.3.4",
 		"@tanstack/react-query": "5.100.10",
 		"@tanstack/react-router": "1.139.9",
 		"@vitejs/plugin-react": "5.1.1",
@@ -29,6 +34,7 @@
 		"zod": "4.1.13"
 	},
 	"devDependencies": {
+		"@capacitor/cli": "^8.3.4",
 		"@types/react": "19.2.7",
 		"@types/react-dom": "19.2.3",
 		"@types/three": "0.182.0",
@@ -38,3 +44,4 @@
 		"vitest": "4.0.13"
 	}
 }
+

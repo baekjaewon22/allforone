@@ -1,4 +1,4 @@
-﻿import { enabledConnectors } from "@all-for-one/connectors";
+import { enabledConnectors } from "@all-for-one/connectors";
 import type { AiReport, DailyLog, HealthConnectDailySummary, HealthEntry, LlmProvider, LlmProviderId, LlmRun, Memo, PersonalSchedule, WorkItem } from "@all-for-one/shared";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type PropsWithChildren, type ReactNode } from "react";
 import { clearAuthSession, getAuthSession, useAuthGuard } from "./auth";
+import { syncNativeHealthConnect } from "./lib/healthConnectNative";
 import { rpcClient } from "./lib/rpcClient";
 import { useSpeechInput, useSpeechOutput } from "./lib/speech";
 import { LoginPage } from "./screens/LoginPage";
@@ -553,9 +554,68 @@ function HealthPage() {
 		queryKey: ["health-entries"],
 		queryFn: rpcClient.getHealthEntries,
 	});
+	const healthConnect = useQuery({
+		queryKey: ["health-connect-status"],
+		queryFn: rpcClient.getHealthConnectStatus,
+	});
+	const healthConnectState = healthConnect.data?.state;
+	const [syncMessage, setSyncMessage] = useState("");
+	const isNativeShell =
+		typeof window !== "undefined" &&
+		(window.navigator.userAgent.includes("AllForOneMobile") ||
+			window.location.protocol === "capacitor:");
 
 	return (
 		<PageFrame title={text.health} eyebrow="컨디션 관리">
+			<section className="health-connect-card">
+				<div>
+					<p className="app-eyebrow">Health Connect</p>
+					<h2>{healthConnectState ? "연동 데이터 수신 중" : "Android 건강 데이터 연결"}</h2>
+					<span>
+						{healthConnectState
+							? `최근 동기화 ${new Date(healthConnectState.lastSyncedAt).toLocaleString()}`
+							: "걸음, 수면, 운동, 심박, 체중 데이터를 All For One 건강 기록으로 가져옵니다."}
+					</span>
+				</div>
+				<div className="health-connect-actions">
+					<span data-status={healthConnectState?.lastStatus ?? (healthConnect.data?.configured ? "ready" : "pending")}>
+						{healthConnectState?.lastStatus === "ok"
+							? "연결됨"
+							: healthConnect.data?.configured
+								? "수신 준비"
+								: "키 필요"}
+					</span>
+					<button
+						type="button"
+						onClick={async () => {
+							if (!isNativeShell) {
+								alert("Health Connect 권한 연결은 Android 앱 빌드에서 활성화됩니다. 현재 웹/PWA는 수신 API 상태만 확인합니다.");
+								return;
+							}
+							setSyncMessage("Health Connect 데이터를 읽는 중입니다...");
+							try {
+								const result = await syncNativeHealthConnect(7);
+								if (result.status === "synced") {
+									setSyncMessage("최근 7일 건강 데이터를 동기화했습니다.");
+									await healthConnect.refetch();
+									await entries.refetch();
+								} else if (result.status === "needs_permission") {
+									setSyncMessage("올포원 앱의 Health Connect 읽기 권한을 허용한 뒤 다시 눌러주세요.");
+								} else if (result.status === "unavailable") {
+									setSyncMessage("이 기기에서 Health Connect를 사용할 수 없습니다.");
+								} else {
+									setSyncMessage("동기화할 건강 데이터가 없습니다.");
+								}
+							} catch {
+								setSyncMessage("Health Connect 동기화에 실패했습니다.");
+							}
+						}}
+					>
+						{isNativeShell ? "동기화" : "연결 방법"}
+					</button>
+				</div>
+				{syncMessage && <p className="health-connect-message">{syncMessage}</p>}
+			</section>
 			<div className="board-toolbar">
 				<div>
 					<strong>{average(entries.data?.map((item) => item.sleepHours)).toFixed(1)}</strong>
@@ -988,6 +1048,7 @@ function AiControlPage() {
 		queryKey: ["llm-history"],
 		queryFn: rpcClient.getLlmHistory,
 	});
+	const providerOptions = providers.data ?? [];
 
 	const run = async () => {
 		if (!message.trim()) {
@@ -1031,13 +1092,13 @@ function AiControlPage() {
 		window.localStorage.setItem("afo-location-region", value);
 	};
 
-	const detectLocation = () => {
+	const detectLocation = (options?: { automatic?: boolean }) => {
 		if (!navigator.geolocation) {
 			setLocationStatus("브라우저 위치 권한을 지원하지 않습니다.");
 			return;
 		}
 
-		setLocationStatus("현재 위치 확인 중");
+		setLocationStatus(options?.automatic ? "GPS 지역 자동 확인 중" : "현재 위치 확인 중");
 		navigator.geolocation.getCurrentPosition(
 			async (position) => {
 				const { latitude, longitude } = position.coords;
@@ -1057,6 +1118,19 @@ function AiControlPage() {
 			{ enableHighAccuracy: false, maximumAge: 10 * 60 * 1000, timeout: 8000 },
 		);
 	};
+
+	useEffect(() => {
+		const shouldAutoDetect =
+			!locationRegion.trim() || /^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$/.test(locationRegion.trim());
+		const alreadyTried = window.sessionStorage.getItem("afo-location-auto-detect");
+
+		if (!shouldAutoDetect || alreadyTried) {
+			return;
+		}
+
+		window.sessionStorage.setItem("afo-location-auto-detect", "1");
+		detectLocation({ automatic: true });
+	}, []);
 
 	return (
 		<PageFrame title={text.aiControl} eyebrow="All For One">
@@ -1086,6 +1160,19 @@ function AiControlPage() {
 							</button>
 						</div>
 					</div>
+					<div className="control-response-slot">
+						{isRunning ? <LlmPendingCard provider={selectedProvider} /> : null}
+						{lastRun && !isRunning ? (
+							<LlmRunCard
+								run={lastRun}
+								featured
+								isSpeaking={speechOutput.isSpeaking}
+								onSpeak={() => speechOutput.speak(lastRun.response)}
+								onStop={speechOutput.stop}
+								speechSupported={speechOutput.isSupported}
+							/>
+						) : null}
+					</div>
 					<div className="control-options">
 						<div className="control-region">
 							<span>지역</span>
@@ -1095,7 +1182,7 @@ function AiControlPage() {
 									onChange={(event) => updateLocationRegion(event.target.value)}
 									placeholder="GPS로 자동 설정"
 								/>
-								<button type="button" onClick={detectLocation}>
+								<button type="button" onClick={() => detectLocation()}>
 									<MapPin aria-hidden="true" size={15} />
 									GPS
 								</button>
@@ -1118,8 +1205,21 @@ function AiControlPage() {
 							</button>
 						</div>
 					</div>
+					<label className="mobile-model-select">
+						<span>모델</span>
+						<select
+							value={selectedProvider}
+							onChange={(event) => setSelectedProvider(event.target.value as LlmProviderId)}
+						>
+							{providerOptions.map((provider) => (
+								<option key={provider.id} value={provider.id} disabled={provider.status !== "ready"}>
+									{provider.model}
+								</option>
+							))}
+						</select>
+					</label>
 					<div className="control-model-strip">
-						{providers.data?.map((provider) => (
+						{providerOptions.map((provider) => (
 							<ProviderCard
 								key={provider.id}
 								provider={provider}
@@ -1148,16 +1248,6 @@ function AiControlPage() {
 							{showHistory ? "닫기" : "최근 질문"}
 						</button>
 					</div>
-					{lastRun ? (
-						<LlmRunCard
-							run={lastRun}
-							featured
-							isSpeaking={speechOutput.isSpeaking}
-							onSpeak={() => speechOutput.speak(lastRun.response)}
-							onStop={speechOutput.stop}
-							speechSupported={speechOutput.isSupported}
-						/>
-					) : null}
 					{showHistory ? (
 						<section className="llm-history-drawer">
 							{history.data?.length ? (
@@ -1180,6 +1270,26 @@ function AiControlPage() {
 				</section>
 			</div>
 		</PageFrame>
+	);
+}
+
+function LlmPendingCard({ provider }: { provider: LlmProviderId }) {
+	return (
+		<article className="llm-pending-card" aria-live="polite">
+			<div className="llm-pending-orb" aria-hidden="true">
+				<span />
+				<span />
+				<span />
+			</div>
+			<div>
+				<p>{provider} 모델 응답 대기 중</p>
+				<h3>요청을 처리하고 있습니다.</h3>
+				<span>네트워크와 모델 응답 시간이 길어져도 이 화면에서 진행 상태를 유지합니다.</span>
+			</div>
+			<div className="llm-pending-line" aria-hidden="true">
+				<span />
+			</div>
+		</article>
 	);
 }
 

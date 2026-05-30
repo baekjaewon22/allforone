@@ -20,6 +20,7 @@ import type {
 	WorkDevice,
 	WorkItem,
 	HealthConnectDailySummary,
+	HealthConnectSyncInput,
 	Memo,
 	NewMemo,
 } from "@all-for-one/shared";
@@ -60,6 +61,17 @@ export type ReverseGeocodeResult = {
 	region: string;
 	displayName: string;
 	address: Record<string, string>;
+};
+
+export type HealthConnectStatus = {
+	configured?: boolean;
+	state?: {
+		deviceId: string;
+		lastSyncedAt: string;
+		lastStatus: "ok" | "error";
+		message?: string;
+		updatedAt: string;
+	};
 };
 
 const fallbackProviders: LlmProvider[] = [
@@ -120,6 +132,7 @@ const fallbackLiveOverview = (siteId: string): SiteLiveOverview => ({
 
 const now = new Date().toISOString();
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8787";
+const deviceIngestKey = import.meta.env.VITE_AFO_DEVICE_INGEST_KEY as string | undefined;
 
 const connectors: ConnectorSummary[] = [
 	{
@@ -326,10 +339,10 @@ async function getJson<T>(path: string): Promise<T> {
 	return response.json() as Promise<T>;
 }
 
-async function postJson<T>(path: string, body: unknown): Promise<T> {
+async function postJson<T>(path: string, body: unknown, extraHeaders?: HeadersInit): Promise<T> {
 	const response = await fetch(`${apiBaseUrl}${path}`, {
 		method: "POST",
-		headers: { "content-type": "application/json" },
+		headers: { "content-type": "application/json", ...extraHeaders },
 		body: JSON.stringify(body),
 	});
 	if (!response.ok) {
@@ -396,6 +409,23 @@ export const rpcClient = {
 		} catch {
 			return [];
 		}
+	},
+	async getHealthConnectStatus(): Promise<HealthConnectStatus> {
+		try {
+			const response = await getJson<HealthConnectStatus & { ok: boolean }>(
+				"/health-connect/status",
+			);
+			return response;
+		} catch {
+			return { configured: false };
+		}
+	},
+	async syncHealthConnect(input: HealthConnectSyncInput): Promise<void> {
+		await postJson<{ ok: boolean }>(
+			"/health-connect/sync",
+			input,
+			deviceIngestKey ? { "X-AFO-Device-Key": deviceIngestKey } : undefined,
+		);
 	},
 	async getPersonalSchedules(): Promise<PersonalSchedule[]> {
 		await delay();
